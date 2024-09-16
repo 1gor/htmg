@@ -31,14 +31,8 @@ RSpec.describe HTMG do
       expect(output).to eq('<span><img src="image?name=foo&amp;value=bar" /></span>')  # Self-closing img tag
     end
 
-
-    it "allows custom tags" do
-      output = htmg { custom_tag { "Custom Content" } }
-      expect(output).to eq("<custom_tag>Custom Content</custom_tag>")
-    end
-
     it "allows nested tags" do
-      output = htmg { div { span { "Custom Content"} } }
+      output = htmg { div { span { "Custom Content" } } }
       expect(output).to eq("<div><span>Custom Content</span></div>")
     end
 
@@ -50,10 +44,9 @@ RSpec.describe HTMG do
     end
 
     it "allows escaping special characters in content" do
-      output = htmg { p { CGI.escapeHTML("<Hello & Welcome>") } }
+      output = htmg { p { h("<Hello & Welcome>") } }
       expect(output).to eq("<p>&lt;Hello &amp; Welcome&gt;</p>")
     end
-
 
     it "handles special characters in attribute keys" do
       output = htmg { div { span("data-my:attr-key": "foo") { "content" } } }
@@ -68,6 +61,47 @@ RSpec.describe HTMG do
     it "handles complex TailwindCSS class values with special characters" do
       output = htmg { div(class: "sm:bg-green-100 lg:hover:bg-green-500 [&>button]:text-white") { "content" } }
       expect(output).to eq(%(<div class="sm:bg-green-100 lg:hover:bg-green-500 [&>button]:text-white">content</div>))
+    end
+  end
+
+  describe "HTML5 tags validation" do
+    it "allows valid HTML5 tags" do
+      output = htmg { div { "Content" } }
+      expect(output).to eq("<div>Content</div>")
+    end
+
+    it "raises NoMethodError for invalid HTML5 tags" do
+      expect { htmg { invalid_tag { "Content" } } }.to raise_error(NoMethodError)
+    end
+
+    it "supports custom tags through environment variable" do
+      ENV["HTMG_EXTRA_TAGS"] = "foo,bar"
+      output = htmg { foo { "Custom Content" } }
+      expect(output).to eq("<foo>Custom Content</foo>")
+    ensure
+      ENV["HTMG_EXTRA_TAGS"] = nil
+    end
+
+    it "does not allow custom tags if not specified in environment" do
+      ENV["HTMG_EXTRA_TAGS"] = nil
+      expect { htmg { foo { "Content" } } }.to raise_error(NoMethodError)
+    end
+
+    it "handles tags in the EXTRA_TAGS constant" do
+      stub_const("HTMG::EXTRA_TAGS", [:custom1, :custom2])
+      output = htmg { custom1 { "Custom Content" } }
+      expect(output).to eq("<custom1>Custom Content</custom1>")
+    end
+
+    it "supports both environment variable and EXTRA_TAGS" do
+      ENV["HTMG_EXTRA_TAGS"] = "foo"
+      stub_const("HTMG::EXTRA_TAGS", [:bar])
+      output = htmg do
+        foo { "Foo Content" } + bar { "Bar Content" }
+      end
+      expect(output).to eq("<foo>Foo Content</foo><bar>Bar Content</bar>")
+    ensure
+      ENV["HTMG_EXTRA_TAGS"] = nil
     end
   end
 end

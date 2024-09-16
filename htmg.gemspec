@@ -4,12 +4,12 @@ require_relative "lib/htmg/version"
 
 Gem::Specification.new do |spec|
   spec.name = "htmg"
-  spec.version = Htmg::VERSION
-  spec.authors = ["Igor Drozdov"]
+  spec.version = HTMG::VERSION
+  spec.authors = ["Igor B. Drozdov"]
   spec.email = ["igor@drozdov.net"]
 
   spec.summary = "Simple HTML generation with closures in Ruby"
-  spec.description = "Build HTML page with nested blocks of Ruby code"
+  spec.description = "Build HTML page with nested blocks of Ruby code for speed and component-based approach."
   spec.homepage = "https://github.com/1gor/htmg"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.0.0"
