@@ -1,8 +1,10 @@
-# Htmg
+[![Tests](https://github.com/1gor/htmg/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/1gor/htmg/actions/workflows/main.yml)
+[![Maintainability](https://api.codeclimate.com/v1/badges/f671fc97d3192e154cb5/maintainability)](https://codeclimate.com/github/1gor/htmg/maintainability)
+[![Known Vulnerabilities](https://snyk.io/test/github/1gor/htmg/badge.svg)](https://snyk.io/test/github/1gor/htmg)
 
-TODO: Delete this and the text below, and describe your gem
+# HTMG - generate HTML with closures in Ruby
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/htmg`. To experiment with that code, run `bin/console` for an interactive prompt.
+This library uses Ruby blocks (closures) to dynamically generate HTML, providing flexible DSL approach to building HTML documents. Its ability to work with custom helper methods (executed in a different scope) adds to its extensibility and modularity.
 
 ## Installation
 

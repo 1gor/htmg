@@ -7,19 +7,17 @@ require_relative "layout_helper_erb"
 require_relative "layout_helper"
 require "benchmark"
 
-include LayoutHelper  # Your HTMG-based layout
-include LayoutHelperERB  # ERB-based layout
-
 title = "My article title"
-content_block = content(title)
-header_block = header
 
 iterations = 10_000
 
 Benchmark.bm do |x|
+  include LayoutHelper  # Your HTMG-based layout
+  include LayoutHelperERB  # ERB-based layout
+
   x.report("HTMG Generator:") do
     iterations.times do
-      layout(title: title, header: header_block, content: content_block)
+      layout(title: title)
     end
   end
 

@@ -43,7 +43,6 @@ module HTMG
   ].freeze
 
   def htmg(...)
-    # Generator.new.instance_eval(&block)
     Generator.new.instance_exec(self, ...)
   end
 
