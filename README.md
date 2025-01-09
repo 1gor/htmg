@@ -24,46 +24,141 @@ There are plenty of alternative html builders. This one uses on speed and simpli
 
 ## Usage
 
-```ruby
+### Basic Usage
 
+```ruby
+require 'htmg'
+
+include HTMG
+
+# Simple element
+puts htmg { div { "Hello World" } }
+# => <div>Hello World</div>
+
+# With attributes
+puts htmg { a(href: "https://example.com") { "Click me" } }
+# => <a href="https://example.com">Click me</a>
+
+# Nested elements
+puts htmg { div(class: "container") { span { "Nested content" } } }
+# => <div class="container"><span>Nested content</span></div>
+```
+
+### Layout Example
+
+```ruby
 module LayoutHelper
   include HTMG
 
-  # Define the layout as a method that accepts title, header, and content
-  def layout(title:)
+  def full_page(title:)
     htmg do |scope|
-      html do
-        [
-          head { meta(title: title) },
-          body {
-            [
-              header { scope.header_section },
-              main { scope.content_section(title) }
-              ].join
-            }
-        ].join
+      html5 do
+        head { 
+          meta(charset: "utf-8") +
+          title_tag { title } 
+        } +
+        body {
+          header { scope.navigation } +
+          main { scope.content(title) } +
+          footer { scope.footer_content }
+        }
       end
     end
   end
 
-  # Helper to define the header section
-  def header_section
+  def navigation
     htmg do
-      ul(class: "nav") {
-        [:foo, :bar].map { |n| li { "menu #{n}" } }.join
+      nav(class: "main-nav") {
+        ul {
+          %w[Home About Contact].map { |item| 
+            li { a(href: "/#{item.downcase}") { item } }
+          }.join
+        }
       }
     end
   end
 
-  # Helper to define the content section
-  def content_section(title)
+  def content(title)
     htmg do
-      h1(class: "article-title") { title } +
-      div(class: "text-black") { "Contents of the first article" }
+      article {
+        h1 { title } +
+        section(class: "content") { "Main article content" }
+      }
+    end
+  end
+
+  def footer_content
+    htmg do
+      div(class: "footer") {
+        "© #{Time.now.year} My Company"
+      }
     end
   end
 end
+```
 
+### Advanced Features
+
+#### HTML5 Doctype
+```ruby
+puts htmg { html5 { body { "Content" } } }
+# => <!DOCTYPE html><html><body>Content</body></html>
+```
+
+#### Common Helpers
+```ruby
+# Image tag helper
+def img_tag(src, alt: "", **attrs)
+  htmg { img(src: src, alt: alt, **attrs) }
+end
+
+# Form input helper
+def input_field(type:, name:, **attrs)
+  htmg { input(type: type, name: name, **attrs) }
+end
+
+# Table helper
+def table(data, **attrs)
+  htmg do
+    table(**attrs) {
+      thead {
+        tr {
+          data.first.keys.map { |header| th { header.to_s.capitalize } }.join
+        }
+      } +
+      tbody {
+        data.map { |row|
+          tr {
+            row.values.map { |value| td { value.to_s } }.join
+          }
+        }.join
+      }
+    }
+  end
+end
+```
+
+#### Custom Tags
+```ruby
+# Using environment variable
+ENV['HTMG_EXTRA_TAGS'] = 'custom-tag,another-tag'
+
+# Using constant
+HTMG::EXTRA_TAGS = [:custom1, :custom2]
+
+puts htmg { custom1 { "Custom content" } }
+# => <custom1>Custom content</custom1>
+```
+
+#### Escaping Content
+```ruby
+# Unescaped content (default)
+puts htmg { div { "<script>alert('hi')</script>" } }
+# => <div><script>alert('hi')</script></div>
+
+# Escaped content
+puts htmg { div { h("<script>alert('hi')</script>") } }
+# => <div>&lt;script&gt;alert(&#39;hi&#39;)&lt;/script&gt;</div>
 ```
 
 When you call `htmg` method with a block, evrything inside this block is either a string or a method/function that returns a string. Therefore you should join them with a `+` sign or wrap them into an array and join, as shown above.

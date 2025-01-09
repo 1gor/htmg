@@ -46,6 +46,24 @@ module HTMG
     Generator.new.instance_exec(self, ...)
   end
 
+  # HTML5 doctype helper
+  def html5(&block)
+    "<!DOCTYPE html>" + htmg { html(&block) }
+  end
+
+  # Common helpers
+  def title_tag(&block)
+    htmg { title(&block) }
+  end
+
+  def stylesheet_link_tag(href, **attrs)
+    htmg { link(rel: "stylesheet", href: href, **attrs) }
+  end
+
+  def javascript_include_tag(src, **attrs)
+    htmg { script(src: src, **attrs) }
+  end
+
   class Generator
     # List of HTML tag names that conflict with Ruby methods
     CONFLICTING_TAGS = %i[p select print id class method send open].freeze
