@@ -41,7 +41,7 @@ module LayoutHelper
     html5 do
       head {
         title { title } +
-        body { 
+        body {
           header { h1 { a(href: "/") { "My Site" } } } +
           main(&block) +
           footer do
@@ -81,7 +81,9 @@ end
 
 #### Option 3: Use in Sinatra Routes
 
-Integrate the layout and view methods into your Sinatra routes.
+Integrate the layout and view methods into your Sinatra routes. There are two approaches depending on whether you're using traditional or modular Sinatra apps.
+
+##### Traditional Sinatra App
 
 ```ruby
 # app.rb
@@ -95,7 +97,7 @@ module LayoutHelper
     html5 do
       head {
         title { title } +
-        body { 
+        body {
           header { h1 { a(href: "/") { "My Site" } } } +
           main(&block) +
           footer do
@@ -142,6 +144,79 @@ get '/about' do
 end
 ```
 
+##### Modular Sinatra App
+
+For modular Sinatra apps, you need to explicitly include HTMG in each helper module and use `helpers` instead of `include`:
+
+```ruby
+# app.rb
+require 'sinatra/base'
+require 'htmg'
+
+class MyApp < Sinatra::Base
+  module LayoutHelper
+    include HTMG
+
+    def layout(title:, &block)
+      html5 do
+        head {
+          title { title } +
+          body {
+            header { h1 { a(href: "/") { "My Site" } } } +
+            main(&block) +
+            footer do
+              small {
+                [ a(href: "/"){ "Home" },
+                  a(href: "/about") { "About" }
+                ].join("&nbsp;")
+              }
+            end
+          }
+        }
+      end
+    end
+  end
+
+  module Views
+    include HTMG
+
+    def home_view
+      h2 { "Welcome to My Site" } +
+      p { "This is the home page." }
+    end
+
+    def about_view
+      h2 { "About Us" } +
+      p { "We are a company that does things." }
+    end
+  end
+
+  helpers LayoutHelper
+  helpers Views
+  include HTMG
+
+  get '/' do
+    htmg do
+      layout(title: "Home") { home_view }
+    end
+  end
+
+  get '/about' do
+    htmg do
+      layout(title: "About") { about_view }
+    end
+  end
+
+  run! if app_file == $0
+end
+```
+
+The key differences are:
+1. Use `Sinatra::Base` and create a class
+2. Each helper module must include HTMG
+3. Use `helpers` instead of `include`
+4. Add `run!` for standalone execution
+
 These examples demonstrate how you can structure your Sinatra application to use the `htmg` gem for generating HTML content. You can define a common layout and individual views, then use them in your Sinatra routes to render complete pages.
 
 ### Basic Usage
@@ -173,9 +248,9 @@ module LayoutHelper
   def full_page(title:)
     htmg do |scope|
       html5 do
-        head { 
+        head {
           meta(charset: "utf-8") +
-          title_tag { title } 
+          title { title }
         } +
         body {
           header { scope.navigation } +
@@ -190,7 +265,7 @@ module LayoutHelper
     htmg do
       nav(class: "main-nav") {
         ul {
-          %w[Home About Contact].map { |item| 
+          %w[Home About Contact].map { |item|
             li { a(href: "/#{item.downcase}") { item } }
           }.join
         }
