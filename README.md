@@ -39,8 +39,20 @@ module LayoutHelper
 
   def layout(title:, &block)
     html5 do
-      head { title_tag { title } + stylesheet_link_tag("/styles.css") } +
-      body { header { "My Site" } + main(&block) }
+      head {
+        title { title } +
+        body { 
+          header { h1 { a(href: "/") { "My Site" } } } +
+          main(&block) +
+          footer do
+            small {
+              [ a(href: "/"){ "Home" },
+                a(href: "/about") { "About" }
+              ].join("&nbsp;")
+            }
+          end
+        }
+      }
     end
   end
 end
@@ -56,17 +68,13 @@ module Views
   include HTMG
 
   def home_view
-    htmg do
-      h1 { "Welcome to My Site" } +
-      p { "This is the home page." }
-    end
+    h2 { "Welcome to My Site" } +
+    p { "This is the home page." }
   end
 
   def about_view
-    htmg do
-      h1 { "About Us" } +
-      p { "We are a company that does things." }
-    end
+    h2 { "About Us" } +
+    p { "We are a company that does things." }
   end
 end
 ```
@@ -78,18 +86,59 @@ Integrate the layout and view methods into your Sinatra routes.
 ```ruby
 # app.rb
 require 'sinatra'
-require_relative 'layout'
-require_relative 'views'
+require 'htmg'
 
-helpers LayoutHelper
-helpers Views
+module LayoutHelper
+  include HTMG
+
+  def layout(title:, &block)
+    html5 do
+      head {
+        title { title } +
+        body { 
+          header { h1 { a(href: "/") { "My Site" } } } +
+          main(&block) +
+          footer do
+            small {
+              [ a(href: "/"){ "Home" },
+                a(href: "/about") { "About" }
+              ].join("&nbsp;")
+            }
+          end
+        }
+      }
+    end
+  end
+end
+
+module Views
+  include HTMG
+
+  def home_view
+    h2 { "Welcome to My Site" } +
+    p { "This is the home page." }
+  end
+
+  def about_view
+    h2 { "About Us" } +
+    p { "We are a company that does things." }
+  end
+end
+
+include Views
+include LayoutHelper
+include HTMG
 
 get '/' do
-  layout(title: "Home") { home_view }
+  htmg do
+    layout(title: "Home") { home_view }
+  end
 end
 
 get '/about' do
-  layout(title: "About") { about_view }
+  htmg do
+    layout(title: "About") { about_view }
+  end
 end
 ```
 
