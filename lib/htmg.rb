@@ -50,9 +50,6 @@ module HTMG
     # List of HTML tag names that conflict with Ruby methods
     CONFLICTING_TAGS = %i[p select print id class method send open].freeze
 
-    def initialize
-    end
-
     # Handle dynamic tag methods
     def method_missing(tag_name, attributes = {}, &block)
       valid_tag = HTMG::HTML5_TAGS.include?(tag_name) || extra_tags.include?(tag_name)

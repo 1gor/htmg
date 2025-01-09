@@ -3,27 +3,67 @@
 $LOAD_PATH.prepend(".")
 
 require "lib/htmg"
-require_relative "layout_helper_erb"
-require_relative "layout_helper"
+require "erb"
 require "benchmark"
 
-title = "My article title"
+iterations = 100_000
 
-iterations = 10_000
+# Define minimal structure in HTMG with data
+module SimpleHTMGWithData
+  include HTMG
 
+  def simple_htmg_structure_with_data
+    htmg do |scope|
+      html do
+        body do
+          h1 { scope.title } +  # Use data from external scope
+          div { "Content" } +
+          span { "More Content" }
+        end
+      end
+    end
+  end
+end
+
+# Helper module to provide data for HTMG
+module HTMGHelper
+  def title
+    "HTMG Title"
+  end
+end
+
+# Define minimal structure in ERB with data
+module SimpleERBWithData
+  def simple_erb_structure_with_data(title)
+    template = <<-ERB
+    <html>
+      <body>
+        <h1><%= title %></h1>  <!-- Use external data -->
+        <div>Content</div>
+        <span>More Content</span>
+      </body>
+    </html>
+    ERB
+
+    ERB.new(template).result(binding)
+  end
+end
+
+# Minimal benchmark test
 Benchmark.bm do |x|
-  include LayoutHelper  # Your HTMG-based layout
-  include LayoutHelperERB  # ERB-based layout
+  include SimpleHTMGWithData
+  include HTMGHelper
+  include SimpleERBWithData
 
-  x.report("HTMG Generator:") do
+  x.report("HTMG with Data:") do
     iterations.times do
-      layout(title: title)
+      simple_htmg_structure_with_data
     end
   end
 
-  x.report("ERB Generator:") do
+  x.report("ERB with Data:") do
     iterations.times do
-      layout_erb(title: title, header: header_erb, content: content_erb(title))
+      simple_erb_structure_with_data("ERB Title")
     end
   end
 end

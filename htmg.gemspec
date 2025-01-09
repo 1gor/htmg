@@ -8,8 +8,8 @@ Gem::Specification.new do |spec|
   spec.authors = ["Igor B. Drozdov"]
   spec.email = ["igor@drozdov.net"]
 
-  spec.summary = "Simple HTML generation with closures in Ruby"
-  spec.description = "Build HTML page with nested blocks of Ruby code for speed and component-based approach."
+  spec.summary = "High performance HTML generation with Ruby closures"
+  spec.description = "HTMG is a fast, functional Ruby library for generating HTML. It leverages Ruby's closures to create reusable, stateless components as pure functions. Up to 5x faster than ERB and focuses on speed, composability, and clean, modular code without side effects."
   spec.homepage = "https://github.com/1gor/htmg"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.0.0"
