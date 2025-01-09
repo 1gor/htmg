@@ -24,6 +24,77 @@ There are plenty of alternative html builders. This one uses on speed and simpli
 
 ## Usage
 
+### Using HTMG in a Sinatra Application
+
+You can use the `htmg` gem in a Sinatra application by defining a layout and individual views. Here are some approaches:
+
+#### Option 1: Define a Layout Method
+
+Create a layout method that uses `htmg` to generate the common structure of your HTML pages. This method can be used to wrap individual view methods.
+
+```ruby
+# layout.rb
+module LayoutHelper
+  include HTMG
+
+  def layout(title:, &block)
+    html5 do
+      head { title_tag { title } + stylesheet_link_tag("/styles.css") } +
+      body { header { "My Site" } + main(&block) }
+    end
+  end
+end
+```
+
+#### Option 2: Individual View Methods
+
+Define individual methods for each view, using `htmg` to generate the specific content for each page.
+
+```ruby
+# views.rb
+module Views
+  include HTMG
+
+  def home_view
+    htmg do
+      h1 { "Welcome to My Site" } +
+      p { "This is the home page." }
+    end
+  end
+
+  def about_view
+    htmg do
+      h1 { "About Us" } +
+      p { "We are a company that does things." }
+    end
+  end
+end
+```
+
+#### Option 3: Use in Sinatra Routes
+
+Integrate the layout and view methods into your Sinatra routes.
+
+```ruby
+# app.rb
+require 'sinatra'
+require_relative 'layout'
+require_relative 'views'
+
+helpers LayoutHelper
+helpers Views
+
+get '/' do
+  layout(title: "Home") { home_view }
+end
+
+get '/about' do
+  layout(title: "About") { about_view }
+end
+```
+
+These examples demonstrate how you can structure your Sinatra application to use the `htmg` gem for generating HTML content. You can define a common layout and individual views, then use them in your Sinatra routes to render complete pages.
+
 ### Basic Usage
 
 ```ruby
