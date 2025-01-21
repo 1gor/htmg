@@ -16,14 +16,6 @@ module Views
       end
     end
 
-    def footer
-      htmg do
-        footer(class: "footer") do
-          div { "© #{Time.now.year} My Roda App" } +
-          div { "Built with #{a(href: "/htmg") { "HTMG" }} and Roda" }
-        end
-      end
-    end
 
     private
 

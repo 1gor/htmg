@@ -2,6 +2,7 @@
 
 module Views
   module Pages
+    include HTMG
     extend self
 
     def home(context)
