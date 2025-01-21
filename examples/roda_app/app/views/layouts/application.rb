@@ -27,7 +27,12 @@ module Views
       private
 
       def component(name)
-        Views::Components.const_get(name.to_s.camelize).new(current_user).render
+        Views::Components.const_get(camel_case(name.to_s)).new(current_user).render
+      end
+
+      # Basic snake_case to CamelCase conversion without ActiveSupport
+      def camel_case(str)
+        str.split('_').map(&:capitalize).join
       end
     end
   end
