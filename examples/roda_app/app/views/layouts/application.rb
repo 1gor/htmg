@@ -2,6 +2,7 @@
 
 module Views
   module Layouts
+    include HTMG
     extend self
 
     def application(title:, &content)
