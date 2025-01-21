@@ -8,7 +8,7 @@ module Views
     def application(title:, &content)
       "<!DOCTYPE html>" + htmg do
         html do
-          head { 
+          head {
             meta(charset: "utf-8") +
             title { "#{title} | My Roda App" } +
             style { <<~CSS }
@@ -23,7 +23,6 @@ module Views
             Components.footer
           end
         end
-      end
       end
     end
   end
