@@ -20,7 +20,95 @@ This speed advantage is due to HTMG functional, stateless approach, which direct
 
 ## Why
 
-There are plenty of alternative html builders. This one uses on speed and simplicity. It is about 100 lines of code. It makes html tags into closures (ruby blocks) that you can nest, combine and test easily. This library uses Ruby functional language features so no classes/objects, no state, no overhead and no uncertainty as to the outcome.
+There are plenty of alternative html builders. This one uses on speed, simplicity and LLM frienliness. It is about 100 lines of code. It makes html tags into closures (ruby blocks) that you can nest, combine and test easily. This library uses Ruby functional language features so no classes/objects, no state, no overhead and no uncertainty as to the outcome.
+
+## LLM friendliness
+
+Much development is done with coding assistants. Here is what one LLM has to say about HTMG vs ERB:
+
+```
+HTMG (Ruby Blocks) is Significantly Easier for LLMs to Reason About - here's why:
+
+ 1 Explicit Code Flow
+   HTMG shows direct Ruby execution:
+
+    htmg do
+      div(class: "alert") do
+        h3 { "Todo Updated!" }
+        p { "ID: #{todo.id}" }
+      end
+    end
+
+   vs ERB's implicit context:
+
+    <div class="alert">
+      <h3><%= @todo.title %></h3>
+      <% if @todo.due_date? %>
+        <p>Due: <%= fmt_date(@todo.due_date) %></p>
+      <% end %>
+    </div>
+
+ 2 Type-Safe Analysis
+   HTMG's structure allows strict validation:
+
+    # LLM can reason about method arguments
+    def todo_item(todo)
+      li(data: { id: todo.id }) { todo.title } # Clearly typed
+    end
+
+   vs templating's string-based ambiguity:
+
+    <li data-id="<%= todo[:id] %>"><%= todo.title.upcase %></li>
+
+ 3 Direct Ruby Integration
+   No context switching between languages:
+
+    # Full Ruby power in components
+    def todo_list(todos)
+      if todos.empty?
+        render_empty_state
+      else
+        ul { todos.map { |t| todo_item(t) } }
+      end
+    end
+
+ 4 Predictable Output
+   HTMG's closure structure guarantees valid HTML nesting:
+
+    table do
+      thead { tr { th "Title" } }
+      tbody do
+        @items.each { |i| tr { td i.name } }
+      end
+    end
+
+   vs templating's risk of unclosed tags:
+
+    <% @items.each do |i| %>
+      <tr><td><%= i.name %>
+    <% end %>
+
+ 5 Better Error Tracing
+   Line numbers map 1:1 with Ruby code vs template compilation steps.
+
+Benchmark Example
+
+
+  Task                  HTMG Accuracy   ERB Accuracy
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Add conditional CSS   98%             73%
+  Fix nested tags       100%            82%
+  Add data attributes   96%             68%
+
+
+Why This Matters for Your Project
+With HTMG:
+
+ 1 I can guarantee valid HTML structure through code analysis
+ 2 Refactoring becomes method-based vs text manipulation
+ 3 Components are truly reusable Ruby objects
+ 4 No hidden template context variables
+ ```
 
 ## Usage
 
