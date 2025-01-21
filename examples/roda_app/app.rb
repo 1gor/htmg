@@ -2,10 +2,11 @@
 
 require "roda"
 require "htmg"
+require "ostruct"
 
 class App < Roda
   include HTMG
-  
+
   plugin :public
   # Load all view components
   Dir[File.join(__dir__, "app/views/**/*.rb")].each { |f| require f }
@@ -27,6 +28,12 @@ class App < Roda
     Views::Layouts.application(title: "My Roda App", &content)
   end
 
+  # Dummy current user for example
+  def current_user
+    @current_user ||= OpenStruct.new(name: "John Doe")
+  end
+
+
   private
 
   # Basic snake_case to CamelCase conversion without ActiveSupport
@@ -34,8 +41,4 @@ class App < Roda
     str.split('_').map(&:capitalize).join
   end
 
-  # Dummy current user for example
-  def current_user
-    @current_user ||= OpenStruct.new(name: "John Doe")
-  end
 end
