@@ -24,13 +24,22 @@ class App < Roda
   end
 
   def view(template, layout: nil)
-    page_module = Views::Pages.const_get(template.to_s.camelize)
+    page_module_name = camel_case(template.to_s)
+    page_module = Views::Pages.const_get(page_module_name)
     content = htmg { page_module.render(self) }
 
     return content unless layout
 
-    layout_module = Views::Layouts.const_get(layout.to_s.camelize)
+    layout_module_name = camel_case(layout.to_s)
+    layout_module = Views::Layouts.const_get(layout_module_name)
     htmg { layout_module.wrap(title: page_module.title) { content } }
+  end
+
+  private
+
+  # Basic snake_case to CamelCase conversion without ActiveSupport
+  def camel_case(str)
+    str.split('_').map(&:capitalize).join
   end
 
   # Dummy current user for example
