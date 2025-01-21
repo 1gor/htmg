@@ -18,7 +18,7 @@ module Views
             CSS
           } +
           body do
-            Components.navigation(current_user) +
+            Components.navigation(scope.current_user) +
             main { content.call } +
             Components.footer
           end
