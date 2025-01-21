@@ -2,14 +2,18 @@
 
 module Views
   module Pages
-    module Home
+    class Home
       include HTMG
+
+      def initialize(context)
+        @context = context
+      end
 
       def self.title = "Welcome"
 
-      def render(context)
+      def render
         article do
-          h1 { "Hello, #{context.current_user.name}!" } +
+          h1 { "Hello, #{@context.current_user.name}!" } +
           p { "This is the home page of our Roda application." } +
           ul(class: "features") {
             %w[Fast Secure HTMG-powered].map { |f| li { f } }.join
