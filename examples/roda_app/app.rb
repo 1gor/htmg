@@ -25,7 +25,10 @@ class App < Roda
 
   def render_page(name)
     content = -> { Views::Pages.public_send(name, self) }
-    Views::Layouts.application(title: "My Roda App") { content.call }
+    Views::Layouts.application(
+      context: self,
+      title: "My Roda App"
+    ) { content.call }
   end
 
   # Dummy current user for example

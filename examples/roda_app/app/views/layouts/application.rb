@@ -5,8 +5,8 @@ module Views
     include HTMG
     extend self
 
-    def application(title:, &content)
-      "<!DOCTYPE html>" + htmg do |scope|
+    def application(context:, title:, &content)
+      "<!DOCTYPE html>" + context.htmg do |scope|
         html do
           head {
             meta(charset: "utf-8") +
@@ -18,7 +18,7 @@ module Views
             CSS
           } +
           body do
-            Components.navigation(scope.current_user) +
+            Components.navigation(scope) +
             main { content.call } +
             Components.footer
           end
