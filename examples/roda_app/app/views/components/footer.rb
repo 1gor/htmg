@@ -2,13 +2,13 @@
 
 module Views
   module Components
-    class Footer
-      include HTMG
+    extend self
 
-      def render
+    def footer(context)
+      context.htmg do |scope|
         footer(class: "footer") do
           div { "© #{Time.now.year} My Roda App" } +
-          div { "Built with #{a(href: "/htmg") { "HTMG" }} and Roda" }
+            div { "Built with #{a(href: "/htmg") { "HTMG" }} and Roda" }
         end
       end
     end
