@@ -20,7 +20,7 @@ module Views
           body do
             Components.navigation(scope) +
             main { content.call } +
-            Components.footer
+            Components.footer(scope)
           end
         end
       end
