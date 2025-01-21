@@ -9,11 +9,11 @@ class App < Roda
   plugin :symbol_views
 
   # Load all view components
-  Dir[File.join(__dir__, "views/**/*.rb")].each { |f| require f }
+  Dir[File.join(__dir__, "app/views/**/*.rb")].each { |f| require f }
 
   route do |r|
     r.public
-    
+
     r.root do
       view :home, layout: :application
     end
@@ -26,9 +26,9 @@ class App < Roda
   def view(template, layout: nil)
     page_module = Views::Pages.const_get(template.to_s.camelize)
     content = htmg { page_module.render(self) }
-    
+
     return content unless layout
-    
+
     layout_module = Views::Layouts.const_get(layout.to_s.camelize)
     htmg { layout_module.wrap(title: page_module.title) { content } }
   end
