@@ -6,8 +6,8 @@ module Views
     extend self
 
     def application(title:, &content)
-      htmg do
-        html5 do
+      "<!DOCTYPE html>" + htmg do
+        html do
           head { 
             meta(charset: "utf-8") +
             title { "#{title} | My Roda App" } +
@@ -23,6 +23,7 @@ module Views
             Components.footer
           end
         end
+      end
       end
     end
   end
