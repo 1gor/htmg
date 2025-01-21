@@ -4,6 +4,8 @@ require "roda"
 require "htmg"
 
 class App < Roda
+  include HTMG
+  
   plugin :public
   plugin :render
   plugin :symbol_views
