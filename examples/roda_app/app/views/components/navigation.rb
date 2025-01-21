@@ -8,7 +8,7 @@ module Views
       context.htmg do |scope|
         nav(class: "main-nav") do
           ul do
-            menu_items(scope.current_user).map { |item|
+            scope.menu_items(scope.current_user).map { |item|
               li { a(href: item[:path]) { item[:label] } }
             }.join
           end
@@ -17,11 +17,5 @@ module Views
     end
 
 
-    private
-
-    def menu_items(current_user)
-      items = [{ path: "/", label: "Home" }]
-      current_user ? items + [{ path: "/about", label: "About" }] : items
-    end
   end
 end

@@ -70,3 +70,19 @@ html {
 - Using blocks with void elements → Invalid HTML
 - Ruby keyword collisions (class/method) → Use tag methods
 - String interpolation without escaping → Use `h()`
+- Scope access errors → Always access data through `scope.` prefix
+
+## Component Data Flow Pattern
+When building HTMG components:
+1. Parent app holds all business logic
+2. Components receive `context` parameter
+3. Access data through `scope.` calls
+4. Keep components focused on HTML structure
+
+Example Flow:
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Roda App  │ →   │  Component  │ →   │    HTMG     │
+│  (context)  │ ←   │ (uses scope)│ ←   │ (gen tags)  │
+└─────────────┘     └─────────────┘     └─────────────┘
+                data via          HTML via
+                scope.methods     tag methods

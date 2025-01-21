@@ -37,6 +37,12 @@ class App < Roda
   end
 
 
+  # Make this available to all components through scope
+  def menu_items(current_user)
+    items = [{ path: "/", label: "Home" }]
+    current_user ? items + [{ path: "/about", label: "About" }] : items
+  end
+
   private
 
   # Basic snake_case to CamelCase conversion without ActiveSupport
