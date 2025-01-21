@@ -6,7 +6,7 @@ module Views
     extend self
 
     def application(title:, &content)
-      "<!DOCTYPE html>" + htmg do
+      "<!DOCTYPE html>" + htmg do |scope|
         html do
           head {
             meta(charset: "utf-8") +

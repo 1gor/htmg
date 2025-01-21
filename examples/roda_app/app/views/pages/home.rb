@@ -6,7 +6,7 @@ module Views
     extend self
 
     def home(context)
-      htmg do
+      htmg do |scope|
         article do
           h1 { "Hello, #{context.current_user.name}!" } +
           p { "This is the home page of our Roda application." } +

@@ -5,7 +5,7 @@ module Views
     extend self
 
     def navigation(current_user)
-      htmg do
+      htmg do |scope|
         nav(class: "main-nav") do
           ul do
             menu_items(current_user).map { |item| 
