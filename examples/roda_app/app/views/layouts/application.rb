@@ -2,10 +2,10 @@
 
 module Views
   module Layouts
-    module Application
-      include HTMG
+    extend self
 
-      def wrap(title:, &block)
+    def application(title:, &content)
+      htmg do
         html5 do
           head { 
             meta(charset: "utf-8") +
@@ -17,22 +17,11 @@ module Views
             CSS
           } +
           body do
-            component(:navigation) +
-            main { block.call } +
-            component(:footer)
+            Components.navigation(current_user) +
+            main { content.call } +
+            Components.footer
           end
         end
-      end
-
-      private
-
-      def component(name)
-        Views::Components.const_get(camel_case(name.to_s)).new(current_user).render
-      end
-
-      # Basic snake_case to CamelCase conversion without ActiveSupport
-      def camel_case(str)
-        str.split('_').map(&:capitalize).join
       end
     end
   end

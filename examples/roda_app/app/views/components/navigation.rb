@@ -2,31 +2,34 @@
 
 module Views
   module Components
-    class Navigation
-      include HTMG
+    extend self
 
-      def initialize(current_user)
-        @current_user = current_user
-      end
-
-      def render
+    def navigation(current_user)
+      htmg do
         nav(class: "main-nav") do
           ul do
-            menu_items.map { |item| li { nav_link(item) } }.join
+            menu_items(current_user).map { |item| 
+              li { a(href: item[:path]) { item[:label] } }
+            }.join
           end
         end
       end
+    end
 
-      private
-
-      def menu_items
-        items = [{ path: "/", label: "Home" }]
-        @current_user ? items + [{ path: "/about", label: "About" }] : items
+    def footer
+      htmg do
+        footer(class: "footer") do
+          div { "© #{Time.now.year} My Roda App" } +
+          div { "Built with #{a(href: "/htmg") { "HTMG" }} and Roda" }
+        end
       end
+    end
 
-      def nav_link(item)
-        a(href: item[:path]) { item[:label] }
-      end
+    private
+
+    def menu_items(current_user)
+      items = [{ path: "/", label: "Home" }]
+      current_user ? items + [{ path: "/about", label: "About" }] : items
     end
   end
 end

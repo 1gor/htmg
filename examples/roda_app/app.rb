@@ -7,9 +7,6 @@ class App < Roda
   include HTMG
   
   plugin :public
-  plugin :render
-  plugin :symbol_views
-
   # Load all view components
   Dir[File.join(__dir__, "app/views/**/*.rb")].each { |f| require f }
 
@@ -17,24 +14,17 @@ class App < Roda
     r.public
 
     r.root do
-      view :home, layout: :application
+      render_page(:home)
     end
 
     r.on "about" do
-      view :about, layout: :application
+      render_page(:about)
     end
   end
 
-  def view(template, layout: nil)
-    page_module_name = camel_case(template.to_s)
-    page_module = Views::Pages.const_get(page_module_name)
-    content = htmg { page_module.render(self) }
-
-    return content unless layout
-
-    layout_module_name = camel_case(layout.to_s)
-    layout_module = Views::Layouts.const_get(layout_module_name)
-    htmg { layout_module.wrap(title: page_module.title) { content } }
+  def render_page(name)
+    content = Views::Pages.public_send(name, self)
+    Views::Layouts.application(title: "My Roda App", &content)
   end
 
   private
