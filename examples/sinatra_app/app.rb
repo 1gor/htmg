@@ -34,11 +34,16 @@ class SinatraApp < Sinatra::Base
     render_page(:about)
   end
 
+  get '/minimal' do
+    render_page(:home, layout: :minimal)
+  end
+
   private
 
-  def render_page(name)
+  def render_page(name, layout: :application)
     content = -> { Views::Pages.public_send(name, self) }
-    Views::Layouts.application(
+    Views::Layouts.public_send(
+      layout,
       context: self,
       title: "My Sinatra App"
     ) { content.call }

@@ -12,6 +12,9 @@ module Views
           p { "This is the home page of our Sinatra application." } +
           ul(class: "features") {
             %w[Fast Secure HTMG-powered].map { |f| li { f } }.join
+          } +
+          p {
+            a(href: "/minimal") { "View minimal version" }
           }
         end
       end
