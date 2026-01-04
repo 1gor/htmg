@@ -1,400 +1,181 @@
-[![Tests](https://github.com/1gor/htmg/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/1gor/htmg/actions/workflows/main.yml)
-[![Maintainability](https://api.codeclimate.com/v1/badges/f671fc97d3192e154cb5/maintainability)](https://codeclimate.com/github/1gor/htmg/maintainability)
-[![Known Vulnerabilities](https://snyk.io/test/github/1gor/htmg/badge.svg)](https://snyk.io/test/github/1gor/htmg)
+# HTMG
 
-# HTMG - generate HTML with closures in Ruby
+**Functional HTML generation for Ruby.**
 
-This library uses Ruby blocks (closures) to dynamically generate HTML, providing flexible DSL approach to building HTML documents. Its ability to work with custom helper methods (executed in a different scope) adds to its extensibility and modularity.
+Stop string-mashing templates. Start composing functions.
 
-## Benchmark
+HTMG treats HTML as data structures, not text files. It brings the power of **functional composition** to your Ruby views, allowing you to build stateless, testable, and reusable UI components without a templating language tax.
 
-HTMG is around 5x times faster than ERB. See `rspec/benchmark.rb`.
+## Philosophy
 
-```
-       user     system      total        real
-HTMG with Data:  0.371457   0.000961   0.372418 (  0.372436)
-ERB with Data:  1.874767   0.010206   1.884973 (  1.884978)
-```
+Templates (ERB, Slim, Haml) separate your logic from your view structure. HTMG takes a different approach: **Your view is just a function.**
 
-This speed advantage is due to HTMG functional, stateless approach, which directly generates HTML using Ruby blocks and method_missing without the need for template parsing or compilation.
-
-## Why
-
-There are plenty of alternative html builders. This one uses on speed and simplicity. It is about 100 lines of code. It makes html tags into closures (ruby blocks) that you can nest, combine and test easily. This library uses Ruby functional language features so no classes/objects, no state, no overhead and no uncertainty as to the outcome.
-
-## Usage
-
-### Using HTMG in a Sinatra Application
-
-You can use the `htmg` gem in a Sinatra application by defining a layout and individual views. Here are some approaches:
-
-#### Option 1: Define a Layout Method
-
-Create a layout method that uses `htmg` to generate the common structure of your HTML pages. This method can be used to wrap individual view methods.
-
-```ruby
-# layout.rb
-module LayoutHelper
-  include HTMG
-
-  def layout(title:, &block)
-    html5 do
-      head {
-        title { title } +
-        body {
-          header { h1 { a(href: "/") { "My Site" } } } +
-          main(&block) +
-          footer do
-            small {
-              [ a(href: "/"){ "Home" },
-                a(href: "/about") { "About" }
-              ].join("&nbsp;")
-            }
-          end
-        }
-      }
-    end
-  end
-end
-```
-
-#### Option 2: Individual View Methods
-
-Define individual methods for each view, using `htmg` to generate the specific content for each page.
-
-```ruby
-# views.rb
-module Views
-  include HTMG
-
-  def home_view
-    h2 { "Welcome to My Site" } +
-    p { "This is the home page." }
-  end
-
-  def about_view
-    h2 { "About Us" } +
-    p { "We are a company that does things." }
-  end
-end
-```
-
-#### Option 3: Use in Sinatra Routes
-
-Integrate the layout and view methods into your Sinatra routes. There are two approaches depending on whether you're using traditional or modular Sinatra apps.
-
-##### Traditional Sinatra App
-
-```ruby
-# app.rb
-require 'sinatra'
-require 'htmg'
-
-module LayoutHelper
-  include HTMG
-
-  def layout(title:, &block)
-    html5 do
-      head {
-        title { title } +
-        body {
-          header { h1 { a(href: "/") { "My Site" } } } +
-          main(&block) +
-          footer do
-            small {
-              [ a(href: "/"){ "Home" },
-                a(href: "/about") { "About" }
-              ].join("&nbsp;")
-            }
-          end
-        }
-      }
-    end
-  end
-end
-
-module Views
-  include HTMG
-
-  def home_view
-    h2 { "Welcome to My Site" } +
-    p { "This is the home page." }
-  end
-
-  def about_view
-    h2 { "About Us" } +
-    p { "We are a company that does things." }
-  end
-end
-
-include Views
-include LayoutHelper
-include HTMG
-
-get '/' do
-  htmg do
-    layout(title: "Home") { home_view }
-  end
-end
-
-get '/about' do
-  htmg do
-    layout(title: "About") { about_view }
-  end
-end
-```
-
-##### Modular Sinatra App
-
-For modular Sinatra apps, you need to explicitly include HTMG in each helper module and use `helpers` instead of `include`:
-
-```ruby
-# app.rb
-require 'sinatra/base'
-require 'htmg'
-
-class MyApp < Sinatra::Base
-  module LayoutHelper
-    include HTMG
-
-    def layout(title:, &block)
-      html5 do
-        head {
-          title { title } +
-          body {
-            header { h1 { a(href: "/") { "My Site" } } } +
-            main(&block) +
-            footer do
-              small {
-                [ a(href: "/"){ "Home" },
-                  a(href: "/about") { "About" }
-                ].join("&nbsp;")
-              }
-            end
-          }
-        }
-      end
-    end
-  end
-
-  module Views
-    include HTMG
-
-    def home_view
-      h2 { "Welcome to My Site" } +
-      p { "This is the home page." }
-    end
-
-    def about_view
-      h2 { "About Us" } +
-      p { "We are a company that does things." }
-    end
-  end
-
-  helpers LayoutHelper
-  helpers Views
-  include HTMG
-
-  get '/' do
-    htmg do
-      layout(title: "Home") { home_view }
-    end
-  end
-
-  get '/about' do
-    htmg do
-      layout(title: "About") { about_view }
-    end
-  end
-
-  run! if app_file == $0
-end
-```
-
-The key differences are:
-1. Use `Sinatra::Base` and create a class
-2. Each helper module must include HTMG
-3. Use `helpers` instead of `include`
-4. Add `run!` for standalone execution
-
-These examples demonstrate how you can structure your Sinatra application to use the `htmg` gem for generating HTML content. You can define a common layout and individual views, then use them in your Sinatra routes to render complete pages.
-
-### Basic Usage
-
-```ruby
-require 'htmg'
-
-include HTMG
-
-# Simple element
-puts htmg { div { "Hello World" } }
-# => <div>Hello World</div>
-
-# With attributes
-puts htmg { a(href: "https://example.com") { "Click me" } }
-# => <a href="https://example.com">Click me</a>
-
-# Nested elements
-puts htmg { div(class: "container") { span { "Nested content" } } }
-# => <div class="container"><span>Nested content</span></div>
-```
-
-### Layout Example
-
-```ruby
-module LayoutHelper
-  include HTMG
-
-  def full_page(title:)
-    htmg do |scope|
-      html5 do
-        head {
-          meta(charset: "utf-8") +
-          title { title }
-        } +
-        body {
-          header { scope.navigation } +
-          main { scope.content(title) } +
-          footer { scope.footer_content }
-        }
-      end
-    end
-  end
-
-  def navigation
-    htmg do
-      nav(class: "main-nav") {
-        ul {
-          %w[Home About Contact].map { |item|
-            li { a(href: "/#{item.downcase}") { item } }
-          }.join
-        }
-      }
-    end
-  end
-
-  def content(title)
-    htmg do
-      article {
-        h1 { title } +
-        section(class: "content") { "Main article content" }
-      }
-    end
-  end
-
-  def footer_content
-    htmg do
-      div(class: "footer") {
-        "© #{Time.now.year} My Company"
-      }
-    end
-  end
-end
-```
-
-### Advanced Features
-
-#### HTML5 Doctype
-```ruby
-puts htmg { html5 { body { "Content" } } }
-# => <!DOCTYPE html><html><body>Content</body></html>
-```
-
-#### Common Helpers
-```ruby
-# Image tag helper
-def img_tag(src, alt: "", **attrs)
-  htmg { img(src: src, alt: alt, **attrs) }
-end
-
-# Form input helper
-def input_field(type:, name:, **attrs)
-  htmg { input(type: type, name: name, **attrs) }
-end
-
-# Table helper
-def table(data, **attrs)
-  htmg do
-    table(**attrs) {
-      thead {
-        tr {
-          data.first.keys.map { |header| th { header.to_s.capitalize } }.join
-        }
-      } +
-      tbody {
-        data.map { |row|
-          tr {
-            row.values.map { |value| td { value.to_s } }.join
-          }
-        }.join
-      }
-    }
-  end
-end
-```
-
-#### Custom Tags
-```ruby
-# Using environment variable
-ENV['HTMG_EXTRA_TAGS'] = 'custom-tag,another-tag'
-
-# Using constant
-HTMG::EXTRA_TAGS = [:custom1, :custom2]
-
-puts htmg { custom1 { "Custom content" } }
-# => <custom1>Custom content</custom1>
-```
-
-#### Escaping Content
-```ruby
-# Unescaped content (default)
-puts htmg { div { "<script>alert('hi')</script>" } }
-# => <div><script>alert('hi')</script></div>
-
-# Escaped content
-puts htmg { div { h("<script>alert('hi')</script>") } }
-# => <div>&lt;script&gt;alert(&#39;hi&#39;)&lt;/script&gt;</div>
-```
-
-When you call `htmg` method with a block, evrything inside this block is either a string or a method/function that returns a string. Therefore you should join them with a `+` sign or wrap them into an array and join, as shown above.
-
-Inside the `htmg` block you can enter any standard html5 element and it will be treated as a function. If you need to use some non-standard tags you can add them to `HTMG::EXTRA_TAGS` constant or to the `HTMG_EXTRA_TAGS` environment variable, separated by comma.
-
-Notice an optional `scope` block argument. It allows access the parent scope and call methods outside the `htmg` block.
-
-Have a look at `spec` directory to see more examples.
-
+* **Code is Data:** HTML structure is defined by nesting Ruby function calls.
+* **Composable:** A component is just a method that returns a tag.
+* **Fast:** No parsing step. It runs at the speed of Ruby method calls.
+* **Explicit:** Data is passed as arguments, not hidden in instance variables.
 
 ## Installation
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
+```ruby
+gem 'htmg'
 
-Install the gem and add to the application's Gemfile by executing:
-
-```bash
-bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
-```
-
-If bundler is not being used to manage dependencies, install the gem by executing:
-
-```bash
-gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
 ```
 
 ## Usage
 
-TODO: Write usage instructions here
+HTMG offers two ways to express HTML: **Argument Style** (functional) and **Block Style** (classic Ruby).
 
-## Development
+### 1. Argument Style (Recommended)
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+Pass content as arguments and attributes as keywords. This style avoids `end` soup and automatically joins siblings without manual concatenation.
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+**Convention:** Pass content first, then attributes (kwargs) last.
 
-## Contributing
+```ruby
+def user_card(user)
+  # Content args first, kwargs last
+  div(
+    h3(user.name),
+    p(user.bio),
+    a("Profile", href: "/u/#{user.id}"),
+    class: "card" 
+  )
+end
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/1gor/htmg.
+```
+
+### 2. Block Style
+
+Use blocks when you need complex logic (like `if/else`) or prefer the visual nesting of `do...end`.
+
+**Important:** Inside a block, you must explicitly join siblings using `+` or `.join`.
+
+```ruby
+div(id: "main") {
+  # Use '+' to join siblings
+  h1("Welcome") + 
+  p("Please log in")
+}
+
+# OR use Array.join for lists
+ul {
+  items.map { |i| li(i.name) }.join
+}
+
+```
+
+### The Entry Point (`htmg`)
+
+The `htmg` method is the entry point. It **only accepts a block**.
+
+If your top-level HTML has multiple root elements (e.g., a header and a footer), you must join them so the block returns a single string.
+
+```ruby
+# Single root element
+puts htmg { div("Hello") }
+
+# Multiple root elements (Must use + or .join)
+puts htmg {
+  header("Top") +
+  main("Body") +
+  footer("Bottom")
+}
+
+```
+
+## Joining Elements: A Summary
+
+Depending on your style, there are three ways to join sibling elements:
+
+1. **Commas (Argument Style):** The cleanest way.
+```ruby
+div(h1("A"), p("B")) 
+
+```
+
+
+2. **Plus `+` (Block Style):** Explicit string concatenation.
+```ruby
+div { h1("A") + p("B") }
+
+```
+
+
+3. **Array `.join` (Collections):** Best for loops.
+```ruby
+ul(
+  items.map { |i| li(i) }.join 
+)
+
+```
+
+
+
+## Components & Composition
+
+Because HTML tags are just functions, "Components" are just Ruby methods.
+
+```ruby
+module UI
+  include HTMG
+
+  def alert(title, message, variant: "info")
+    div(
+      h4(title, class: "font-bold"),
+      p(message),
+      class: "alert alert-#{variant}"
+    )
+  end
+end
+
+# Usage
+htmg { 
+  UI.alert("Success", "Record saved", variant: "success") 
+}
+
+```
+
+## Attributes
+
+Attributes are standard Ruby keyword arguments (`kwargs`).
+
+* **Boolean:** `input(disabled: true)` renders `<input disabled />`.
+* **Special Characters:** Quote the keys for weird attributes.
+```ruby
+button("@click": "open = true", "data-action": "save")
+
+```
+
+
+* **Safety:** Attributes are automatically escaped, **except** for `class` and `id` (to support complex Tailwind selectors like `[&>p]:text-red`).
+
+## Security
+
+* **Content:** Raw by default. We trust your Ruby code.
+* **User Input:** Use the `h()` helper explicitly for untrusted input.
+
+```ruby
+div(h(user_input)) # Escaped
+div(user_input)    # Raw
+
+```
+
+## Performance
+
+HTMG is fast. It bypasses the template parsing phase entirely. In benchmarks, it matches the performance of **cached ERB** (production mode) and is ~2.5x faster than uncached ERB.
+
+```
+                 user     system      total        real
+HTMG (Args):     0.570425   0.002896   0.573321 (  0.576280)
+ERB (Cached):    0.557943   0.002945   0.560888 (  0.561023)
+ERB (Uncached):  1.316579   0.000986   1.317565 (  1.317995)
+
+```
 
 ## License
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+MIT
+
+```
+

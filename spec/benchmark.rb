@@ -6,64 +6,100 @@ require "lib/htmg"
 require "erb"
 require "benchmark"
 
-iterations = 100_000
+iterations = 50_000
 
-# Define minimal structure in HTMG with data
-module SimpleHTMGWithData
-  include HTMG
-
-  def simple_htmg_structure_with_data
-    htmg do |scope|
-      html do
-        body do
-          h1 { scope.title } +  # Use data from external scope
-          div { "Content" } +
-          span { "More Content" }
-        end
-      end
-    end
-  end
-end
-
-# Helper module to provide data for HTMG
+# Helper module to provide data
 module HTMGHelper
   def title
     "HTMG Title"
   end
 end
 
-# Define minimal structure in ERB with data
-module SimpleERBWithData
-  def simple_erb_structure_with_data(title)
+module BenchmarkCases
+  include HTMG
+  include HTMGHelper
+
+  # 1. New "MatzLisp" Argument Style
+  # Prediction: Faster than blocks (no instance_eval context switching)
+  def htmg_arg_style
+    htmg do
+      html(
+        body(
+          h1(title), # Implicit delegation to helper
+          div("Content"),
+          span("More Content")
+        )
+      )
+    end
+  end
+
+  # 2. Classic Block Style
+  # Prediction: Slower due to instance_eval overhead and + concatenation
+  def htmg_block_style
+    htmg do
+      html {
+        body {
+          h1 { title } +
+          div { "Content" } +
+          span { "More Content" }
+        }
+      }
+    end
+  end
+
+  # 3. ERB (Cached / Production Style)
+  # Prediction: Likely the fastest. ERB compiles to pure string buffering ruby code.
+  ERB_TEMPLATE = ERB.new(<<-ERB)
+    <html>
+      <body>
+        <h1><%= title %></h1>
+        <div>Content</div>
+        <span>More Content</span>
+      </body>
+    </html>
+  ERB
+
+  def erb_cached
+    ERB_TEMPLATE.result(binding)
+  end
+
+  # 4. ERB (Uncached / Scripting Style)
+  # Prediction: The slowest. Parsing strings is expensive.
+  def erb_uncached
     template = <<-ERB
     <html>
       <body>
-        <h1><%= title %></h1>  <!-- Use external data -->
+        <h1><%= title %></h1>
         <div>Content</div>
         <span>More Content</span>
       </body>
     </html>
     ERB
-
     ERB.new(template).result(binding)
   end
 end
 
-# Minimal benchmark test
-Benchmark.bm do |x|
-  include SimpleHTMGWithData
-  include HTMGHelper
-  include SimpleERBWithData
+# Run the Benchmark
+puts "Running #{iterations} iterations..."
+puts "---------------------------------------------"
 
-  x.report("HTMG with Data:") do
-    iterations.times do
-      simple_htmg_structure_with_data
-    end
+Benchmark.bm(20) do |x|
+  # Create an instance to run methods within
+  runner = Class.new { include BenchmarkCases }.new
+
+  x.report("HTMG (Args):") do
+    iterations.times { runner.htmg_arg_style }
   end
 
-  x.report("ERB with Data:") do
-    iterations.times do
-      simple_erb_structure_with_data("ERB Title")
-    end
+  x.report("HTMG (Blocks):") do
+    iterations.times { runner.htmg_block_style }
+  end
+
+  x.report("ERB (Cached):") do
+    iterations.times { runner.erb_cached }
+  end
+
+  x.report("ERB (Uncached):") do
+    iterations.times { runner.erb_uncached }
   end
 end

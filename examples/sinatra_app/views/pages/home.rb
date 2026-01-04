@@ -1,0 +1,32 @@
+# frozen_string_literal: true
+
+module Views
+  module Pages
+    include HTMG
+    extend self
+
+    def home(context)
+      context.htmg do |scope|
+        article do
+          h1 { "Hello, #{scope.current_user.name}!" } +
+          p { "This is the home page of our Sinatra application." } +
+          ul(class: "features") {
+            %w[Fast Secure HTMG-powered].map { |f| li { f } }.join
+          } +
+          p {
+            a(href: "/minimal") { "View minimal version" }
+          }
+        end
+      end
+    end
+
+    def about(context)
+      context.htmg do
+        article do
+          h1 { "About Our App" } +
+          p { "Learn more about our amazing application" }
+        end
+      end
+    end
+  end
+end

@@ -6,100 +6,147 @@ RSpec.describe HTMG do
   include HTMG
 
   describe "HTMG Generator" do
-    it "generates opening and closing tags when a block is provided" do
-      output = htmg { div { "Content" } }
-      expect(output).to eq("<div>Content</div>")
+    it "generates opening and closing tags" do
+      # Argument style
+      expect(htmg { div("Content") }).to eq("<div>Content</div>")
+      # Block style
+      expect(htmg { div { "Content" } }).to eq("<div>Content</div>")
     end
 
-    it "generates self-closing tags when no block is provided" do
+    it "generates self-closing tags when no content is provided" do
       output = htmg { br }
-      expect(output).to eq("<br />")  # Self-closing by default
+      expect(output).to eq("<br />")
     end
 
     it "adds attributes to tags" do
-      output = htmg { a(href: "http://example.com") { "Link" } }
-      expect(output).to eq('<a href="http://example.com">Link</a>')
+      # Argument style
+      expect(htmg { a("Link", href: "http://example.com") }).to eq('<a href="http://example.com">Link</a>')
+      # Block style
+      expect(htmg { a(href: "http://example.com") { "Link" } }).to eq('<a href="http://example.com">Link</a>')
     end
 
     it "escapes special characters in attributes" do
       output = htmg { img(src: "image?name=foo&value=bar") }
-      expect(output).to eq('<img src="image?name=foo&amp;value=bar" />')  # Self-closing img tag
+      expect(output).to eq('<img src="image?name=foo&amp;value=bar" />')
     end
 
     it "handles self-closing tags that are nested" do
-      output = htmg { span { img(src: "image?name=foo&value=bar") } }
-      expect(output).to eq('<span><img src="image?name=foo&amp;value=bar" /></span>')  # Self-closing img tag
+      # Argument style
+      expect(htmg { span(img(src: "image?name=foo&value=bar")) }).to eq('<span><img src="image?name=foo&amp;value=bar" /></span>')
+      # Block style
+      expect(htmg { span { img(src: "image?name=foo&value=bar") } }).to eq('<span><img src="image?name=foo&amp;value=bar" /></span>')
     end
 
     it "allows nested tags" do
-      output = htmg { div { span { "Custom Content" } } }
-      expect(output).to eq("<div><span>Custom Content</span></div>")
+      # Argument style
+      expect(htmg { div(span("Custom Content")) }).to eq("<div><span>Custom Content</span></div>")
+      # Block style
+      expect(htmg { div { span { "Custom Content" } } }).to eq("<div><span>Custom Content</span></div>")
+      # Mixed style (Block outer, Argument inner)
+      expect(htmg { div { span("Custom Content") } }).to eq("<div><span>Custom Content</span></div>")
     end
 
-    it "allows unescaped contant by default" do
-      output = htmg do
-        p { "<Hello & Welcome>" }
-      end
-      expect(output).to eq("<p><Hello & Welcome></p>")
+    it "allows unescaped content by default" do
+      # Argument style
+      expect(htmg { p("<Hello & Welcome>") }).to eq("<p><Hello & Welcome></p>")
+      # Block style
+      expect(htmg { p { "<Hello & Welcome>" } }).to eq("<p><Hello & Welcome></p>")
     end
 
     it "allows escaping special characters in content" do
-      output = htmg { p { h("<Hello & Welcome>") } }
-      expect(output).to eq("<p>&lt;Hello &amp; Welcome&gt;</p>")
+      # Argument style
+      expect(htmg { p(h("<Hello & Welcome>")) }).to eq("<p>&lt;Hello &amp; Welcome&gt;</p>")
+      # Block style
+      expect(htmg { p { h("<Hello & Welcome>") } }).to eq("<p>&lt;Hello &amp; Welcome&gt;</p>")
     end
 
     it "handles special characters in attribute keys" do
-      output = htmg { div { span("data-my:attr-key": "foo") { "content" } } }
-      expect(output).to eq(%(<div><span data-my:attr-key="foo">content</span></div>))
+      # Argument style
+      expect(htmg { div(span("content", "data-my:attr-key": "foo")) }).to eq(%(<div><span data-my:attr-key="foo">content</span></div>))
+      # Block style
+      expect(htmg { div { span("data-my:attr-key": "foo") { "content" } } }).to eq(%(<div><span data-my:attr-key="foo">content</span></div>))
     end
 
     it "handles special characters in attribute values" do
-      output = htmg { div(class: "bg-blue-500 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 focus:ring-opacity-50") { "content" } }
-      expect(output).to eq(%(<div class="bg-blue-500 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 focus:ring-opacity-50">content</div>))
+      classes = "bg-blue-500 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 focus:ring-opacity-50"
+      expected = %(<div class="#{classes}">content</div>)
+
+      # Argument style
+      expect(htmg { div("content", class: classes) }).to eq(expected)
+      # Block style
+      expect(htmg { div(class: classes) { "content" } }).to eq(expected)
     end
 
     it "handles complex TailwindCSS class values with special characters" do
-      output = htmg { div(class: "sm:bg-green-100 lg:hover:bg-green-500 [&>button]:text-white") { "content" } }
-      expect(output).to eq(%(<div class="sm:bg-green-100 lg:hover:bg-green-500 [&>button]:text-white">content</div>))
+      classes = "sm:bg-green-100 lg:hover:bg-green-500 [&>button]:text-white"
+      expected = %(<div class="#{classes}">content</div>)
+
+      # Argument style
+      expect(htmg { div("content", class: classes) }).to eq(expected)
+      # Block style
+      expect(htmg { div(class: classes) { "content" } }).to eq(expected)
     end
   end
 
   describe "HTML5 tags validation" do
     it "allows valid HTML5 tags" do
-      output = htmg { div { "Content" } }
-      expect(output).to eq("<div>Content</div>")
+      # Argument style
+      expect(htmg { div("Content") }).to eq("<div>Content</div>")
+      # Block style
+      expect(htmg { div { "Content" } }).to eq("<div>Content</div>")
     end
 
     it "raises NoMethodError for invalid HTML5 tags" do
+      # Argument style
+      expect { htmg { invalid_tag("Content") } }.to raise_error(NoMethodError)
+      # Block style
       expect { htmg { invalid_tag { "Content" } } }.to raise_error(NoMethodError)
     end
 
     it "supports custom tags through environment variable" do
       ENV["HTMG_EXTRA_TAGS"] = "foo,bar"
-      output = htmg { foo { "Custom Content" } }
-      expect(output).to eq("<foo>Custom Content</foo>")
+
+      # Argument style
+      expect(htmg { foo("Custom Content") }).to eq("<foo>Custom Content</foo>")
+      # Block style
+      expect(htmg { foo { "Custom Content" } }).to eq("<foo>Custom Content</foo>")
     ensure
       ENV["HTMG_EXTRA_TAGS"] = nil
     end
 
     it "does not allow custom tags if not specified in environment" do
       ENV["HTMG_EXTRA_TAGS"] = nil
+      # Argument style
+      expect { htmg { foo("Content") } }.to raise_error(NoMethodError)
+      # Block style
       expect { htmg { foo { "Content" } } }.to raise_error(NoMethodError)
     end
 
     it "handles tags in the EXTRA_TAGS constant" do
       stub_const("HTMG::EXTRA_TAGS", [:custom1, :custom2])
-      output = htmg { custom1 { "Custom Content" } }
-      expect(output).to eq("<custom1>Custom Content</custom1>")
+
+      # Argument style
+      expect(htmg { custom1("Custom Content") }).to eq("<custom1>Custom Content</custom1>")
+      # Block style
+      expect(htmg { custom1 { "Custom Content" } }).to eq("<custom1>Custom Content</custom1>")
     end
 
     it "supports both environment variable and EXTRA_TAGS" do
       ENV["HTMG_EXTRA_TAGS"] = "foo"
       stub_const("HTMG::EXTRA_TAGS", [:bar])
-      output = htmg do
+      expected = "<foo>Foo Content</foo><bar>Bar Content</bar>"
+
+      # Argument style (String concatenation)
+      output_args = htmg do
+        foo("Foo Content") + bar("Bar Content")
+      end
+      expect(output_args).to eq(expected)
+
+      # Block style (String concatenation)
+      output_block = htmg do
         foo { "Foo Content" } + bar { "Bar Content" }
       end
-      expect(output).to eq("<foo>Foo Content</foo><bar>Bar Content</bar>")
+      expect(output_block).to eq(expected)
     ensure
       ENV["HTMG_EXTRA_TAGS"] = nil
     end

@@ -9,3 +9,7 @@ gem "rake", "~> 13.0"
 gem "rspec", "~> 3.0"
 
 gem "webrick", "~> 1.8"
+
+gem "puma", "~> 6.5"
+
+gem "benchmark", "~> 0.5.0"

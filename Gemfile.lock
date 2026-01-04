@@ -6,7 +6,11 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
+    benchmark (0.5.0)
     diff-lcs (1.5.1)
+    nio4r (2.7.4)
+    puma (6.5.0)
+      nio4r (~> 2.0)
     rake (13.2.1)
     rspec (3.13.0)
       rspec-core (~> 3.13.0)
@@ -28,7 +32,9 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
+  benchmark (~> 0.5.0)
   htmg!
+  puma (~> 6.5)
   rake (~> 13.0)
   rspec (~> 3.0)
   webrick (~> 1.8)
