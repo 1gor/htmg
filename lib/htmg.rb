@@ -1,38 +1,8 @@
 # frozen_string_literal: true
-
-# Copyright 2011 Salvatore Sanfilippo. All rights reserved.
-# Modifications by Igor B. Drozdov, 2024.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-#    1. Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#
-#    2. Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#
-# THIS SOFTWARE IS PROVIDED BY SALVATORE SANFILIPPO ''AS IS'' AND ANY EXPRESS
-# OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-# OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN
-# NO EVENT SHALL SALVATORE SANFILIPPO OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-# INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-# THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-# The views and conclusions contained in the software and documentation are
-# those of the authors and should not be interpreted as representing official
-# policies, either expressed or implied, of Salvatore Sanfilippo or Igor B. Drozdov.
-
 require_relative "htmg/version"
 require "cgi"
 
 module HTMG
-  # Valid HTML5 tags according to the HTML5 specification
   HTML5_TAGS = %i[
     a abbr address area article aside audio b base bdi bdo blockquote body br button canvas caption
     cite code col colgroup data datalist dd del details dfn dialog div dl dt em embed fieldset figcaption
@@ -42,89 +12,89 @@ module HTMG
     table tbody td template textarea tfoot th thead time title tr track u ul var video wbr
   ].freeze
 
-  def htmg(...)
-    Generator.new.instance_exec(self, ...)
+  def htmg(context = nil, &block)
+    Generator.new(context || self).instance_eval(&block).to_s
   end
 
-  # HTML5 doctype helper
-  def html5(&block)
-    "<!DOCTYPE html>" + htmg { html(&block) }
-  end
-
-  # Common helpers
-  def title_tag(&block)
-    htmg { title(&block) }
-  end
-
-  def stylesheet_link_tag(href, **attrs)
-    htmg { link(rel: "stylesheet", href: href, **attrs) }
-  end
-
-  def javascript_include_tag(src, **attrs)
-    htmg { script(src: src, **attrs) }
+  def h(string)
+    CGI.escapeHTML(string.to_s)
   end
 
   class Generator
-    # List of HTML tag names that conflict with Ruby methods
+    # Methods that exist in Ruby Object/Kernel but act as HTML tags
     CONFLICTING_TAGS = %i[p select print id class method send open].freeze
 
-    # Handle dynamic tag methods
-    def method_missing(tag_name, attributes = {}, &block)
-      valid_tag = HTMG::HTML5_TAGS.include?(tag_name) || extra_tags.include?(tag_name)
+    def initialize(context)
+      @context = context
+    end
 
-      if valid_tag
-        content = block ? instance_eval(&block) : nil
-        gentag(tag_name, attributes, content)
+    # Explicitly override conflicting methods to forward them to tag logic
+    CONFLICTING_TAGS.each do |method_name|
+      define_method(method_name) do |*args, &block|
+        method_missing(method_name, *args, &block)
+      end
+    end
+
+    def method_missing(tag_name, *children, **attributes, &block)
+      tag = tag_name.to_s.tr("_", "-").to_sym
+
+      # 1. Check if it is a valid tag (HTML5 or Custom)
+      if HTMG::HTML5_TAGS.include?(tag) || extra_tags.include?(tag)
+        tag(tag, children, attributes, &block)
+
+      # 2. Delegate to parent context if unknown (e.g. helper methods)
+      elsif @context.respond_to?(tag_name)
+        @context.public_send(tag_name, *children, **attributes, &block)
+
       else
-        raise NoMethodError, "Invalid HTML tag: #{tag_name}"
+        super
       end
     end
 
     def respond_to_missing?(method_name, include_private = false)
-      HTMG::HTML5_TAGS.include?(method_name) || extra_tags.include?(method_name) || super
+      tag = method_name.to_s.tr("_", "-").to_sym
+      HTMG::HTML5_TAGS.include?(tag) ||
+      extra_tags.include?(tag) ||
+      @context.respond_to?(method_name) || super
     end
 
     private
 
-    # Generate the HTML tag string
-    def gentag(tag_name, attributes, content)
-      tag_name = tag_name.to_s
+    def tag(name, children, attributes, &block)
+      # --- Attributes ---
+      attrs = attributes.map do |k, v|
+        val = if v == true
+                k # Boolean attribute (e.g. checked)
+              elsif %w[class id].include?(k.to_s)
+                v.to_s # Don't escape class/id (for Tailwind/[&>button])
+              else
+                CGI.escapeHTML(v.to_s) # Default: Safety first
+              end
+        " #{k}=\"#{val}\""
+      end.join
 
-      unless attributes.empty?
-        attribs = attributes.map do |k, v|
-          # Escape all attributes, except for class and id
-          if %w[class id].include?(k.to_s)
-            " #{k}=\"#{v}\""
-          else
-            " #{k}=\"#{CGI.escapeHTML(v.to_s)}\""
-          end
-        end.join
+      # --- Content ---
+      # 1. Variadic Args
+      content = children.map(&:to_s).join
+
+      # 2. Block (with auto-join for Arrays)
+      if block_given?
+        block_result = instance_eval(&block)
+        content << (block_result.is_a?(Array) ? block_result.join : block_result.to_s)
       end
 
-      if content
-        "<#{tag_name}#{attribs}>#{content}</#{tag_name}>"
+      # --- Render ---
+      if content.empty?
+        "<#{name}#{attrs} />"
       else
-        "<#{tag_name}#{attribs} />"  # Always self-close when there's no content
+        "<#{name}#{attrs}>#{content}</#{name}>"
       end
     end
 
-    # Handle extra tags defined in an environment variable or constant
     def extra_tags
       @extra_tags ||= begin
-        extra_tags_from_env = ENV["HTMG_EXTRA_TAGS"]&.split(",")&.map(&:strip)&.map(&:to_sym) || []
-        extra_tags_from_env + (defined?(HTMG::EXTRA_TAGS) ? HTMG::EXTRA_TAGS : [])
-      end
-    end
-
-    # Escape HTML entities for non-raw content
-    def h(s)
-      CGI.escapeHTML(s)
-    end
-
-    # Override conflicting methods to forward to method_missing
-    CONFLICTING_TAGS.each do |method_name|
-      define_method(method_name) do |*args, &block|
-        method_missing(method_name, *args, &block)
+        env = ENV["HTMG_EXTRA_TAGS"]&.split(",")&.map(&:strip)&.map(&:to_sym) || []
+        env + (defined?(HTMG::EXTRA_TAGS) ? HTMG::EXTRA_TAGS : [])
       end
     end
   end
