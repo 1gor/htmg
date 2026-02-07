@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+RubyVM::YJIT.enable if defined?(RubyVM::YJIT.enable)
+
 $LOAD_PATH.prepend(".")
 
 require "lib/htmg"
