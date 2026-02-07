@@ -30,8 +30,8 @@ module HTMG
 
     # Explicitly override conflicting methods to forward them to tag logic
     CONFLICTING_TAGS.each do |method_name|
-      define_method(method_name) do |*args, &block|
-        method_missing(method_name, *args, &block)
+      define_method(method_name) do |*args, **kwargs, &block|
+        method_missing(method_name, *args, **kwargs, &block)
       end
     end
 
