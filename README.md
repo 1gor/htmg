@@ -2,18 +2,16 @@
 
 **Functional HTML generation for Ruby.**
 
-Stop string-mashing templates. Start composing functions.
-
 HTMG treats HTML as data structures, not text files. It brings the power of **functional composition** to your Ruby views, allowing you to build stateless, testable, and reusable UI components without a templating language tax.
 
-## Philosophy
+## Philosophy: The "MatzLisp" Way
 
-Templates (ERB, Slim, Haml) separate your logic from your view structure. HTMG takes a different approach: **Your view is just a function.**
+Templates (ERB, Slim) separate logic from structure, often leading to "magic" context and implicit dependencies. HTMG takes a different approach: **Your view is just a function.**
 
 * **Code is Data:** HTML structure is defined by nesting Ruby function calls.
-* **Composable:** A component is just a method that returns a tag.
-* **Fast:** No parsing step. It runs at the speed of Ruby method calls.
-* **Explicit:** Data is passed as arguments, not hidden in instance variables.
+* **Unidirectional Data Flow:** Data is passed explicitly down from the route to the view. Views never "pull" data.
+* **Explicit over Implicit:** No magical `scope` or `instance_variables`. If a view needs data, it must be passed as an argument.
+* **Boring Technology:** Just Ruby. No parsers, no distinct compilation step.
 
 ## Installation
 
@@ -22,160 +20,203 @@ gem 'htmg'
 
 ```
 
-## Usage
+## Architectural Guide
 
-HTMG offers two ways to express HTML: **Argument Style** (functional) and **Block Style** (classic Ruby).
+HTMG is designed to be used with a **Functional View Pattern**. This works exceptionally well with Roda, Sinatra, and Hanami.
 
-### 1. Argument Style (Recommended)
+### 1. The Route is the Composer
 
-Pass content as arguments and attributes as keywords. This style avoids `end` soup and automatically joins siblings without manual concatenation.
-
-**Convention:** Pass content first, then attributes (kwargs) last.
+The route (Controller) is responsible for fetching data and coordinating the view. It passes the application context (`self`) and data explicitly.
 
 ```ruby
-def user_card(user)
-  # Content args first, kwargs last
-  div(
-    h3(user.name),
-    p(user.bio),
-    a("Profile", href: "/u/#{user.id}"),
-    class: "card" 
-  )
-end
+# app.rb (Roda Example)
+route do |r|
+  r.root do
+    # 1. Fetch Data
+    user = current_user
+    posts = Repo::Posts.recent
 
-```
+    # 2. Render Page (Pure Function)
+    content = Views::Home.call(self, user: user, posts: posts)
 
-### 2. Block Style
-
-Use blocks when you need complex logic (like `if/else`) or prefer the visual nesting of `do...end`.
-
-**Important:** Inside a block, you must explicitly join siblings using `+` or `.join`.
-
-```ruby
-div(id: "main") {
-  # Use '+' to join siblings
-  h1("Welcome") + 
-  p("Please log in")
-}
-
-# OR use Array.join for lists
-ul {
-  items.map { |i| li(i.name) }.join
-}
-
-```
-
-### The Entry Point (`htmg`)
-
-The `htmg` method is the entry point. It **only accepts a block**.
-
-If your top-level HTML has multiple root elements (e.g., a header and a footer), you must join them so the block returns a single string.
-
-```ruby
-# Single root element
-puts htmg { div("Hello") }
-
-# Multiple root elements (Must use + or .join)
-puts htmg {
-  header("Top") +
-  main("Body") +
-  footer("Bottom")
-}
-
-```
-
-## Joining Elements: A Summary
-
-Depending on your style, there are three ways to join sibling elements:
-
-1. **Commas (Argument Style):** The cleanest way.
-```ruby
-div(h1("A"), p("B")) 
-
-```
-
-
-2. **Plus `+` (Block Style):** Explicit string concatenation.
-```ruby
-div { h1("A") + p("B") }
-
-```
-
-
-3. **Array `.join` (Collections):** Best for loops.
-```ruby
-ul(
-  items.map { |i| li(i) }.join 
-)
-
-```
-
-
-
-## Components & Composition
-
-Because HTML tags are just functions, "Components" are just Ruby methods.
-
-```ruby
-module UI
-  include HTMG
-
-  def alert(title, message, variant: "info")
-    div(
-      h4(title, class: "font-bold"),
-      p(message),
-      class: "alert alert-#{variant}"
-    )
+    # 3. Wrap in Layout (Wrapper Function)
+    Views::Layout.application(self, title: "Home", user: user) do
+      content
+    end
   end
 end
 
-# Usage
-htmg { 
-  UI.alert("Success", "Record saved", variant: "success") 
+```
+
+### 2. Views are Pure Functions
+
+Views should be modules with stateless methods. They accept:
+
+1. `ctx`: The app context (for helpers like `csrf_tag`, `routes`).
+2. `**data`: Explicit keyword arguments for all required data.
+
+```ruby
+# views/home.rb
+module Views
+  extend self
+
+  def home(ctx, user:, posts:)
+    ctx.htmg do
+      div(class: "container") {
+        h1 { "Welcome, #{h(user.name)}" } +
+        # Component Composition
+        Components.post_list(posts: posts)
+      }
+    end
+  end
+end
+
+```
+
+### 3. Components are Dumb
+
+Components should not know about the `ctx` (unless they generate links) and definitely should not know about the database. They just render what they are given.
+
+```ruby
+# views/components.rb
+module Views
+  module Components
+    extend self
+
+    def post_list(posts:)
+      htmg do
+        ul(class: "posts") {
+          posts.map { |post| 
+            li { h(post.title) } 
+          }.join
+        }
+      end
+    end
+  end
+end
+
+```
+
+### 4. Layouts are Wrappers
+
+A layout is simply a function that takes a block and `yield`s the content into place.
+
+```ruby
+# views/layout.rb
+module Views
+  module Layout
+    extend self
+
+    def application(ctx, title:, user:)
+      "<!DOCTYPE html>" + ctx.htmg do
+        html do
+          head { title { h(title) } } +
+          body do
+            header { "User: #{h(user.name)}" } +
+            main { yield } + # Inject content here
+            footer { "© 2024" }
+          end
+        end
+      end
+    end
+  end
+end
+
+```
+
+## Usage Syntax
+
+HTMG offers two ways to express HTML.
+
+### Argument Style (Recommended for Leaves)
+
+Pass content as arguments. Cleaner for simple elements.
+
+```ruby
+# <div class="card"><h1>Title</h1></div>
+div(h1("Title"), class: "card")
+
+```
+
+### Block Style (Recommended for Structure)
+
+Use blocks for nesting. **Crucial:** You must explicitly join siblings.
+
+```ruby
+# <main><h1>Title</h1><p>Text</p></main>
+main {
+  h1 { "Title" } +   # Use + to join siblings
+  p { "Text" }
 }
 
 ```
 
-## Attributes
+### Collections
 
-Attributes are standard Ruby keyword arguments (`kwargs`).
+Use standard Ruby `.map` and `.join`.
 
-* **Boolean:** `input(disabled: true)` renders `<input disabled />`.
-* **Special Characters:** Quote the keys for weird attributes.
 ```ruby
-button("@click": "open = true", "data-action": "save")
+ul {
+  items.map { |i| li { i.name } }.join
+}
 
 ```
 
+### Safety & Escaping
 
-* **Safety:** Attributes are automatically escaped, **except** for `class` and `id` (to support complex Tailwind selectors like `[&>p]:text-red`).
-
-## Security
-
-* **Content:** Raw by default. We trust your Ruby code.
-* **User Input:** Use the `h()` helper explicitly for untrusted input.
+* **Attributes:** Auto-escaped (except `class`/`id` for Tailwind safety).
+* **Content:** Raw by default. **YOU** must escape user input.
 
 ```ruby
-div(h(user_input)) # Escaped
-div(user_input)    # Raw
+div(user_content)      # Renders HTML (Unsafe)
+div(h(user_content))   # Escaped (Safe)
+
+```
+
+## Best Practices (Dos and Don'ts)
+
+| Category | Do | Don't |
+| --- | --- | --- |
+| **State** | Pass data as explicit arguments (`user: user`). | Do not rely on `scope.current_user` or instance vars (`@user`). |
+| **Logic** | Keep logic in the Route/Repository. | Do not fetch data inside a View or Component. |
+| **Context** | Pass `ctx` (self) for helpers/routes. | Do not use global helpers or mixins. |
+| **HTMX** | Reuse components for partial responses. | Do not duplicate logic for AJAX/Socket updates. |
+| **Safety** | Explicitly use `h()` for dynamic content. | Do not interpolate strings blindly. |
+
+## HTMX / Reactive Pattern
+
+HTMG shines with "HTML over the Wire" (HTMX, Hotwire). Because components are just functions, you can reuse them for both full-page renders and partial updates.
+
+**Route:**
+
+```ruby
+r.on "partials" do
+  r.get "feed" do
+    # Reuse the SAME component used in the main layout
+    alerts = Repo::Alerts.recent
+    Views::Components.alert_feed(alerts: alerts)
+  end
+end
+
+```
+
+**Component:**
+
+```ruby
+def alert_feed(alerts:)
+  htmg do
+    div(id: "feed") { 
+      alerts.map { |a| div(class: "alert") { a.msg } }.join 
+    }
+  end
+end
 
 ```
 
 ## Performance
 
-HTMG is fast. It bypasses the template parsing phase entirely. In benchmarks, it matches the performance of **cached ERB** (production mode) and is ~2.5x faster than uncached ERB.
-
-```
-                 user     system      total        real
-HTMG (Args):     0.570425   0.002896   0.573321 (  0.576280)
-ERB (Cached):    0.557943   0.002945   0.560888 (  0.561023)
-ERB (Uncached):  1.316579   0.000986   1.317565 (  1.317995)
-
-```
+HTMG bypasses template parsing and string scanning, running at the speed of Ruby method calls. It is generally comparable to cached ERB and significantly faster than uncached templates.
 
 ## License
 
 MIT
-
-```
-
