@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    htmg (0.1.0)
+    htmg (0.2.1)
 
 GEM
   remote: https://rubygems.org/
