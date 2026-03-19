@@ -98,130 +98,162 @@ div(
 
 ## Architectural Guide
 
-HTMG is designed for **unidirectional data flow**. Data is fetched once in the route, then flows down through function arguments to views and components.
+HTMG is designed for **unidirectional data flow**. Data is fetched once in the route, then flows down through function arguments.
 
 ```
-Route (fetch data) → View (compose) → Component (render)
+Route (fetch data) → Layout (document shell) → Page (compose) → Component (render)
 ```
 
-### 1. The Route is the Composer
+Every layer follows the same pattern: a module with `extend self` and `include HTMG`. Pure functions — data in, HTML string out.
 
-The route fetches data and coordinates views. It passes context (`self`) and data explicitly.
+### 1. Components — Single UI Elements
+
+Components are the smallest unit. They receive data as keyword arguments and return an HTML string. **Never fetch data inside components.**
 
 ```ruby
-# app.rb (Roda)
-route do |r|
-  r.root do
-    # FETCH DATA HERE (only place data is fetched)
-    user = current_user
-    posts = Repo::Posts.recent
-
-    # PASS DATA DOWN
-    HTMGHelpers.render_page(self, title: "Home") do
-      Views.home(self, user: user, posts: posts)
-    end
-  end
-end
-```
-
-### 2. Views are Pure Functions
-
-Views are modules with stateless methods. They receive `ctx` (the app context) and explicit keyword arguments.
-
-```ruby
-# views.rb
+# views/components/post_list.rb
 module Views
-  extend self
-  include HTMG
+  module Components
+    module PostList
+      extend self
+      include HTMG
 
-  def home(ctx, user:, posts:)
-    ctx.htmg do
-      div(
-        h1("Welcome, #{h(user.name)}"),
-        Components.post_list(posts: posts),
-        class: "container"
-      )
+      def render(posts:)
+        htmg do
+          ul(
+            posts.map { |post| li(h(post.title), class: "post") }.join,
+            class: "posts"
+          )
+        end
+      end
     end
   end
 end
 ```
 
-### 3. Components are Pure Functions
+Components can be nested in subdirectories for grouping (e.g. `views/components/headers/simple.rb` → `Components::Headers::Simple`).
 
-Components receive data, return HTML. **Never fetch data inside components**—receive everything as parameters.
+### 2. Pages — Compose Components for a Route
+
+Pages compose components into a full page body. They receive explicit keyword arguments — no framework context needed.
 
 ```ruby
-# components.rb
-module Components
-  extend self
-  include HTMG
+# views/pages/home.rb
+module Views
+  module Pages
+    module Home
+      extend self
 
-  # Data comes in as parameters, HTML goes out
-  def post_list(posts:)
-    htmg do
-      ul(
-        posts.map { |post| li(h(post.title), class: "post") }.join,
-        class: "posts"
-      )
+      def render(user:, posts:)
+        Components::Headers::Simple.render(
+          heading: "Welcome, #{CGI.escapeHTML(user.name)}"
+        ) + Components::PostList.render(posts: posts)
+      end
     end
   end
 end
 ```
 
-### 4. Layouts with HTMGHelpers
+Pages don't need `include HTMG` themselves — they just call component `.render` methods and concatenate results with `+`.
 
-Create a helpers module with `render_page` for consistent HTML document layout:
+### 3. Layouts — Document Shell
+
+Layouts wrap page content in the HTML document structure (`<html>`, `<head>`, `<body>`, header, footer). They receive `ctx` (the app context) because they need request-level information like the current path.
 
 ```ruby
-# htmg_helpers.rb
-module HTMGHelpers
-  extend self
-  include HTMG
+# views/layouts/application.rb
+module Views
+  module Layouts
+    module Application
+      extend self
+      include HTMG
 
-  # The ONLY essential helper - wraps content in HTML document structure
-  def render_page(ctx, title: "App", &content)
-    ctx.htmg do
-      html(
-        head(
-          meta(charset: "utf-8"),
-          meta(name: "viewport", content: "width=device-width, initial-scale=1"),
-          title(title),
-          css_bootstrap
-        ),
-        body(
-          main(content.call, id: "main-content"),
-          js_bootstrap
-        )
-      )
+      def render(ctx, title: "", flash_notices: [], flash_errors: [])
+        current_path = ctx.request.path_info
+        content = yield
+
+        "<!DOCTYPE html>" + ctx.htmg do
+          html(
+            head(
+              meta(charset: "utf-8"),
+              meta(name: "viewport", content: "width=device-width, initial-scale=1"),
+              '<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>',
+              title(title.empty? ? "MyApp" : "MyApp - #{title}")
+            ),
+            body(
+              Components::Header.render(current_path: current_path),
+              main(
+                Components::FlashMessages.render(notices: flash_notices, errors: flash_errors),
+                content,
+                class: "pt-24"
+              ),
+              Components::Footer.render
+            ),
+            lang: "en"
+          )
+        end
+      end
     end
-  end
-
-  # Asset helpers (return raw strings, no htmg needed)
-  def css_bootstrap
-    '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">'
-  end
-
-  def js_bootstrap
-    '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>'
   end
 end
 ```
 
-Add application-specific helpers (navbar, flash, etc.) as needed—they're just functions.
+Multiple layouts are natural — e.g. an `Error` layout without header/footer for error pages.
 
-### 5. Usage Pattern Summary
+### 4. The Route — Fetch Data, Wire Layers
+
+The route is the only place data is fetched. A thin `render_page` helper wires flash messages into the layout.
 
 ```ruby
-# Views: ctx is first argument, data as keyword args
-Views.home(ctx, user: user, posts: posts)
-
-# Components: data only (no ctx unless generating links)
-Components.post_list(posts: posts)
-
-# Layout: ctx and title, content via block
-HTMGHelpers.render_page(ctx, title: "Home") do
-  Views.home(ctx, user: user, posts: posts)
+# helpers/render.rb
+module AppHelpers
+  def render_page(title: "", &block)
+    content = block.call
+    Views::Layouts::Application.render(
+      self,
+      title: title,
+      flash_notices: flash["notice"] ? [flash["notice"]] : [],
+      flash_errors: flash["error"] ? [flash["error"]] : []
+    ) { content }
+  end
 end
+
+# app.rb (Roda)
+class App < Roda
+  include HTMG
+  include AppHelpers
+
+  route do |r|
+    r.root do
+      user = current_user
+      posts = Repo::Posts.recent
+
+      render_page(title: "Home") do
+        Views::Pages::Home.render(user: user, posts: posts)
+      end
+    end
+  end
+end
+```
+
+### 5. Summary
+
+| Layer | Receives | Returns | Needs `ctx`? |
+|-------|----------|---------|--------------|
+| **Component** | Data as keyword args | HTML string | No |
+| **Page** | Data as keyword args | HTML string (composed components) | No |
+| **Layout** | `ctx`, title, flash, `&block` | Full HTML document | Yes |
+| **Route** | Request | Response (via `render_page`) | Is `ctx` |
+
+```ruby
+# Components: data only
+Components::PostList.render(posts: posts)
+
+# Pages: compose components, data only
+Pages::Home.render(user: user, posts: posts)
+
+# Layout: wraps page content in document shell
+render_page(title: "Home") { Pages::Home.render(user: user, posts: posts) }
 ```
 
 ## Safety & Escaping
@@ -236,61 +268,57 @@ div(h(user_content))   # HTML escaped (safe)
 
 ## HTMX / Reactive Pattern
 
-HTMG shines with "HTML over the Wire" (HTMX, Hotwire). Because components are just functions, you can reuse them for both full-page renders and partial updates.
-
-**Routes:**
+HTMG shines with "HTML over the Wire" (HTMX, Hotwire). Because components are pure functions, you can reuse them for both full-page renders and partial updates.
 
 ```ruby
-# Full page render
-r.root do
-  alerts = Repo::Alerts.recent
+# Component — same function serves both contexts
+module Views
+  module Components
+    module AlertFeed
+      extend self
+      include HTMG
 
-  HTMGHelpers.render_page(self, title: "Alert Feed") do
-    Components.alert_feed(alerts: alerts)
-  end
-end
-
-# HTMX partial - just call the component directly
-r.on "partials" do
-  r.get "feed" do
-    Components.alert_feed(alerts: Repo::Alerts.recent)
-  end
-end
-```
-
-**Component:**
-
-```ruby
-module Components
-  extend self
-  include HTMG
-
-  def alert_feed(alerts:)
-    htmg do
-      div(
-        alerts.map { |a|
-          div(h(a.msg), class: "alert")
-        }.join,
-        id: "feed"
-      )
+      def render(alerts:)
+        htmg do
+          div(
+            alerts.map { |a| div(h(a.msg), class: "p-4 bg-yellow-50 rounded") }.join,
+            id: "feed"
+          )
+        end
+      end
     end
   end
 end
 ```
 
-This pattern works because:
+```ruby
+# Full page render — component wrapped in layout
+r.root do
+  alerts = Repo::Alerts.recent
+  render_page(title: "Alert Feed") do
+    Components::AlertFeed.render(alerts: alerts)
+  end
+end
+
+# HTMX partial — call the component directly
+r.get "partials/feed" do
+  Components::AlertFeed.render(alerts: Repo::Alerts.recent)
+end
+```
+
+This works because:
 * Same component renders for both initial page load and HTMX updates
-* No duplicated logic between AJAX and full-page responses
-* Components are pure functions—call them anywhere with the same data
+* No duplicated logic between full-page and partial responses
+* Components are pure functions — call them anywhere with the same data
 
 ## Best Practices
 
 | Category | Do | Don't |
 |----------|----|----|
 | **Style** | Use ARGS style: `div(h1("Title"), class: "card")` | Use `+` when you could nest instead |
-| **State** | Pass data as explicit arguments | Rely on `scope` or instance variables |
-| **Context** | Pass `ctx` as first argument | Use global helpers or mixins |
-| **Logic** | Keep logic in routes/repositories | Fetch data inside views |
+| **State** | Pass data as explicit keyword arguments | Rely on `scope` or instance variables |
+| **Layers** | Route → Layout → Page → Component | Skip layers or fetch data in pages/components |
+| **Context** | Only layouts receive `ctx` | Pass `ctx` through pages and components |
 | **Safety** | Use `h()` for dynamic content | Interpolate strings blindly |
 | **HTMX** | Call components directly for partials | Wrap in unnecessary helpers |
 

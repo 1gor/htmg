@@ -13,34 +13,3 @@ RSpec.configure do |config|
     c.syntax = :expect
   end
 end
-
-module LayoutHelper
-  include HTMG
-
-  # Define the layout as a method that accepts title, header, and content
-  def layout(title:, header:, content:)
-    htmg do
-      html do
-        head { meta(title: title) } +
-          body { header { header } + main { content } }
-      end
-    end
-  end
-
-  # Helper to define the header section
-  def header
-    htmg do
-      ul(class: "nav") {
-        [:foo, :bar].map { |n| li { "menu #{n}" } }.join
-      }
-    end
-  end
-
-  # Helper to define the content section
-  def content(title)
-    htmg do
-      h1(class: "article-title") { title } +
-        div(class: "text-black") { "Contents of the first article" }
-    end
-  end
-end
