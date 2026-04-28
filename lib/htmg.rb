@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 require_relative "htmg/version"
 require "cgi"
+require "set"
 
 module HTMG
   HTML5_TAGS = %i[
@@ -10,6 +11,27 @@ module HTMG
     legend li link main map mark meta meter nav noscript object ol optgroup option output p param picture
     pre progress q rp rt ruby s samp script section select small source span strong style sub summary sup
     table tbody td template textarea tfoot th thead time title tr track u ul var video wbr
+  ].freeze
+
+  # HTML void elements per the WHATWG spec — these have no closing tag and may
+  # legitimately self-close. Any other empty HTML element MUST use <tag></tag>
+  # form, because browsers do not honour XML-style self-closing on non-void
+  # elements (e.g. "<div />" is parsed as an unclosed opening tag, causing
+  # subsequent siblings to nest inside it).
+  # https://html.spec.whatwg.org/multipage/syntax.html#void-elements
+  HTML_VOID_ELEMENTS = %i[
+    area base br col embed hr img input link meta param source track wbr
+  ].to_set.freeze
+
+  # Common SVG tags. SVG is XML-namespaced and may legitimately self-close,
+  # so empty SVG elements render as "<path />" rather than "<path></path>".
+  # Bundled by default since SVG icons are ubiquitous in modern web apps and
+  # users would otherwise have to register them via EXTRA_TAGS.
+  SVG_TAGS = %i[
+    svg path circle rect line polygon polyline ellipse
+    g defs use symbol marker clipPath mask pattern
+    linearGradient radialGradient stop foreignObject
+    text tspan textPath
   ].freeze
 
   def htmg(context = nil, &block)
@@ -38,8 +60,8 @@ module HTMG
     def method_missing(tag_name, *children, **attributes, &block)
       tag = tag_name.to_s.tr("_", "-").to_sym
 
-      # 1. Check if it is a valid tag (HTML5 or Custom)
-      if HTMG::HTML5_TAGS.include?(tag) || extra_tags.include?(tag)
+      # 1. Check if it is a valid tag (HTML5, SVG, or Custom)
+      if HTMG::HTML5_TAGS.include?(tag) || HTMG::SVG_TAGS.include?(tag) || extra_tags.include?(tag)
         tag(tag, children, attributes, &block)
 
       # 2. Delegate to parent context if unknown (e.g. helper methods)
@@ -54,6 +76,7 @@ module HTMG
     def respond_to_missing?(method_name, include_private = false)
       tag = method_name.to_s.tr("_", "-").to_sym
       HTMG::HTML5_TAGS.include?(tag) ||
+      HTMG::SVG_TAGS.include?(tag) ||
       extra_tags.include?(tag) ||
       @context.respond_to?(method_name) || super
     end
@@ -84,11 +107,18 @@ module HTMG
       end
 
       # --- Render ---
-      if content.empty?
+      if content.empty? && self_closable?(name)
         "<#{name}#{attrs} />"
       else
         "<#{name}#{attrs}>#{content}</#{name}>"
       end
+    end
+
+    # An empty element may render as "<x />" only if it is a known HTML void
+    # element or an SVG element. All other empty elements must render with an
+    # explicit closing tag — see HTML_VOID_ELEMENTS for rationale.
+    def self_closable?(name)
+      HTMG::HTML_VOID_ELEMENTS.include?(name) || HTMG::SVG_TAGS.include?(name)
     end
 
     def extra_tags

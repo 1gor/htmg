@@ -120,7 +120,10 @@ RSpec.describe "Page Layout Architecture" do
       end
 
       expect(page).to include("<main>raw content</main>")
-      expect(page).to include(%(<ul class="nav" />))
+      # Empty non-void elements render with an explicit closing tag (HTML5
+       # browsers treat self-closing syntax on non-void elements as an
+       # unclosed opening tag, breaking sibling layout).
+      expect(page).to include(%(<ul class="nav"></ul>))
     end
   end
 end
