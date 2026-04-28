@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.0] - 2026-04-28
+
+### Fixed
+- Empty non-void HTML elements (e.g. `<div>`, `<span>`, `<section>`) now render with an explicit closing tag — `<div></div>` rather than `<div />`. The previous self-closing form is invalid in HTML5: browsers parse `<div />` as an unclosed opening tag, causing subsequent siblings to nest inside it. This is a real-world bug that breaks layouts whenever an empty decorative element (like a separator) sits between siblings.
+
+### Added
+- `HTMG::HTML_VOID_ELEMENTS` constant listing the WHATWG HTML void elements (`area`, `base`, `br`, `col`, `embed`, `hr`, `img`, `input`, `link`, `meta`, `param`, `source`, `track`, `wbr`). Only these self-close when empty.
+- `HTMG::SVG_TAGS` constant listing common SVG tags (`svg`, `path`, `circle`, `rect`, `line`, `polygon`, `polyline`, `ellipse`, `g`, `defs`, `use`, `text`, `tspan`, etc.). SVG is XML-namespaced and may legitimately self-close, so empty SVG elements continue to render as `<path />`.
+- SVG tags are now recognised by default — no `EXTRA_TAGS` registration required for inline SVG icons.
+
 ## [Unreleased]
 
 ### Added

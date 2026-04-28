@@ -13,9 +13,47 @@ RSpec.describe HTMG do
       expect(htmg { div { "Content" } }).to eq("<div>Content</div>")
     end
 
-    it "generates self-closing tags when no content is provided" do
-      output = htmg { br }
-      expect(output).to eq("<br />")
+    it "self-closes void HTML elements when empty" do
+      expect(htmg { br }).to eq("<br />")
+      expect(htmg { hr }).to eq("<hr />")
+      expect(htmg { img(src: "x.png") }).to eq('<img src="x.png" />')
+      expect(htmg { meta(charset: "utf-8") }).to eq('<meta charset="utf-8" />')
+    end
+
+    it "uses an explicit closing tag for empty non-void elements" do
+      # Browsers don't honour XML self-closing on non-void HTML elements:
+      # "<div />" is parsed as an unclosed opening tag, so subsequent siblings
+      # nest inside it. Empty non-void elements MUST render as "<tag></tag>".
+      expect(htmg { div(class: "spacer") }).to eq('<div class="spacer"></div>')
+      expect(htmg { span("aria-hidden": "true") }).to eq('<span aria-hidden="true"></span>')
+      expect(htmg { section }).to eq("<section></section>")
+    end
+
+    it "self-closes empty SVG elements" do
+      expect(htmg { path(d: "M0 0") }).to eq('<path d="M0 0" />')
+      expect(htmg { circle(cx: "5", cy: "5", r: "3") }).to eq('<circle cx="5" cy="5" r="3" />')
+      expect(htmg { rect(width: "10") }).to eq('<rect width="10" />')
+    end
+
+    it "renders SVG without requiring EXTRA_TAGS" do
+      output = htmg { svg(path(d: "M0 0"), viewBox: "0 0 24 24") }
+      expect(output).to eq('<svg viewBox="0 0 24 24"><path d="M0 0" /></svg>')
+    end
+
+    it "preserves sibling order when an empty non-void element sits between content" do
+      # Regression: previously "<div />" caused sibling content to nest inside
+      # the empty div on real browsers, breaking layouts. Order must be flat.
+      output = htmg do
+        div(
+          span("a"),
+          div(class: "separator"),
+          span("b"),
+          class: "wrapper"
+        )
+      end
+      expect(output).to eq(
+        '<div class="wrapper"><span>a</span><div class="separator"></div><span>b</span></div>'
+      )
     end
 
     it "adds attributes to tags" do
