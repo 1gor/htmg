@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.1] - 2026-04-28
+
+### Removed
+- `HTMG::SVG_TAGS` constant and built-in SVG tag dispatch. Adding SVG tags by default polluted the tag namespace with generic words (`text`, `use`, `pattern`, `mask`, `stop`, `marker`, `g`, `defs`, etc.) that users may legitimately have defined as helper methods on their context. With those tags in the default dispatch, calling such a method inside an `htmg` block silently rendered a tag instead of invoking the helper. Users who want to build SVG via HTMG calls can opt in by adding the relevant tags to `EXTRA_TAGS`. Icons are leaf data and are typically expressed more cleanly as raw SVG strings (helper methods returning `<svg>...</svg>`) than as nested tag-builder calls.
+
 ## [0.3.0] - 2026-04-28
 
 ### Fixed

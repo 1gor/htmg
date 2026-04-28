@@ -23,17 +23,6 @@ module HTMG
     area base br col embed hr img input link meta param source track wbr
   ].to_set.freeze
 
-  # Common SVG tags. SVG is XML-namespaced and may legitimately self-close,
-  # so empty SVG elements render as "<path />" rather than "<path></path>".
-  # Bundled by default since SVG icons are ubiquitous in modern web apps and
-  # users would otherwise have to register them via EXTRA_TAGS.
-  SVG_TAGS = %i[
-    svg path circle rect line polygon polyline ellipse
-    g defs use symbol marker clipPath mask pattern
-    linearGradient radialGradient stop foreignObject
-    text tspan textPath
-  ].freeze
-
   def htmg(context = nil, &block)
     Generator.new(context || self).instance_eval(&block).to_s
   end
@@ -60,8 +49,8 @@ module HTMG
     def method_missing(tag_name, *children, **attributes, &block)
       tag = tag_name.to_s.tr("_", "-").to_sym
 
-      # 1. Check if it is a valid tag (HTML5, SVG, or Custom)
-      if HTMG::HTML5_TAGS.include?(tag) || HTMG::SVG_TAGS.include?(tag) || extra_tags.include?(tag)
+      # 1. Check if it is a valid tag (HTML5 or Custom)
+      if HTMG::HTML5_TAGS.include?(tag) || extra_tags.include?(tag)
         tag(tag, children, attributes, &block)
 
       # 2. Delegate to parent context if unknown (e.g. helper methods)
@@ -76,7 +65,6 @@ module HTMG
     def respond_to_missing?(method_name, include_private = false)
       tag = method_name.to_s.tr("_", "-").to_sym
       HTMG::HTML5_TAGS.include?(tag) ||
-      HTMG::SVG_TAGS.include?(tag) ||
       extra_tags.include?(tag) ||
       @context.respond_to?(method_name) || super
     end
@@ -115,10 +103,12 @@ module HTMG
     end
 
     # An empty element may render as "<x />" only if it is a known HTML void
-    # element or an SVG element. All other empty elements must render with an
-    # explicit closing tag — see HTML_VOID_ELEMENTS for rationale.
+    # element. All other empty elements must render with an explicit closing
+    # tag — see HTML_VOID_ELEMENTS for rationale. SVG and other namespaced
+    # elements are out of scope; users who want to build SVG via HTMG can
+    # opt in by adding tags to EXTRA_TAGS.
     def self_closable?(name)
-      HTMG::HTML_VOID_ELEMENTS.include?(name) || HTMG::SVG_TAGS.include?(name)
+      HTMG::HTML_VOID_ELEMENTS.include?(name)
     end
 
     def extra_tags
