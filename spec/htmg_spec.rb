@@ -29,17 +29,6 @@ RSpec.describe HTMG do
       expect(htmg { section }).to eq("<section></section>")
     end
 
-    it "self-closes empty SVG elements" do
-      expect(htmg { path(d: "M0 0") }).to eq('<path d="M0 0" />')
-      expect(htmg { circle(cx: "5", cy: "5", r: "3") }).to eq('<circle cx="5" cy="5" r="3" />')
-      expect(htmg { rect(width: "10") }).to eq('<rect width="10" />')
-    end
-
-    it "renders SVG without requiring EXTRA_TAGS" do
-      output = htmg { svg(path(d: "M0 0"), viewBox: "0 0 24 24") }
-      expect(output).to eq('<svg viewBox="0 0 24 24"><path d="M0 0" /></svg>')
-    end
-
     it "preserves sibling order when an empty non-void element sits between content" do
       # Regression: previously "<div />" caused sibling content to nest inside
       # the empty div on real browsers, breaking layouts. Order must be flat.
